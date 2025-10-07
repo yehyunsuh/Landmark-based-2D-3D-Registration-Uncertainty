@@ -1,0 +1,7 @@
+opencv-python
+h5py
+numpy
+nibabel
+tqdm
+scipy
+diffdrr==0.5.1

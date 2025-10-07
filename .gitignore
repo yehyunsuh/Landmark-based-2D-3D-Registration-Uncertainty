@@ -1,0 +1,14 @@
+# Data 
+data/DeepFluoro
+data/ipcai_2020_full_res_data.h5
+data/ipcai_2020_full_res_data.zip
+data/LICENSE
+
+# Logging
+log
+
+# Temporary
+*tmp*
+
+# Cache
+__pycache__/
