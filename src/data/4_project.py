@@ -21,13 +21,13 @@ def project(args, device='cuda'):
     sample_size = args.sample_size
     n_landmarks = args.n_landmarks
 
-    if args.data_type == 'easy':
+    if args.task_type == 'easy':
         rotation_range = [(-15, 15), (-15, 15), (-5, 5)]  # degrees
         # translation_range = [(-50, 50), (450, 550), (-50, 50)]  # mm
-    elif args.data_type == 'medium':
+    elif args.task_type == 'medium':
         rotation_range = [(-30, 30), (-30, 30), (-10, 10)]  # degrees
         # translation_range = [(-50, 50), (450, 550), (-50, 50)]  # mm
-    elif args.data_type == 'hard':  
+    elif args.task_type == 'hard':  
         rotation_range = [(-45, 45), (-45, 45), (-15, 15)]  # degrees
         # translation_range = [(-50, 50), (450, 550), (-50, 50)]  # mm
     else:
@@ -37,8 +37,8 @@ def project(args, device='cuda'):
     specimen_path_list = sorted(glob(f"{args.data_dir}/{args.unzip_dir}/*"))
     for specimen_path in specimen_path_list:
         print(f"Processing specimen: {specimen_path}")
-        os.makedirs(f'{specimen_path}/{args.data_type}_projection_images', exist_ok=True)
-        os.makedirs(f'{specimen_path}/{args.data_type}_projection_csv', exist_ok=True)
+        os.makedirs(f'{specimen_path}/{args.task_type}_projection_images', exist_ok=True)
+        os.makedirs(f'{specimen_path}/{args.task_type}_projection_csv', exist_ok=True)
 
         specimen_id = os.path.basename(specimen_path)
         specimen_volume_path = os.path.join(specimen_path, f"{specimen_id}.nii.gz")
@@ -89,7 +89,7 @@ def project(args, device='cuda'):
             img_np = img.squeeze().detach().cpu().numpy()
             img_norm = (img_np - img_np.min()) / (img_np.max() - img_np.min())
             img_uint8 = (img_norm * 255).astype(np.uint8)
-            cv2.imwrite(f'{specimen_path}/{args.data_type}_projection_images/{specimen_id}_{i:04d}.png', img_uint8)
+            cv2.imwrite(f'{specimen_path}/{args.task_type}_projection_images/{specimen_id}_{i:04d}.png', img_uint8)
             del img, img_np, img_norm, img_uint8  # Free memory
 
         landmark_dir = os.path.join(specimen_path, 'sampled_landmarks_3d')
@@ -139,7 +139,7 @@ def project(args, device='cuda'):
             total_landmark_2D_array[idx, :, :] = np.array(landmark_2D_array)
         total_landmark_2D_array_transposed = total_landmark_2D_array.transpose(1, 0, 2)
 
-        image_path_list = sorted(glob(f"{specimen_path}/{args.data_type}_projection_images/{specimen_id}_*.png"))[:10]
+        image_path_list = sorted(glob(f"{specimen_path}/{args.task_type}_projection_images/{specimen_id}_*.png"))[:10]
         os.makedirs(f'visualization_tmp/overlay/{specimen_id}', exist_ok=True)
         for i, image_path in tqdm(enumerate(image_path_list), desc="Overlaying Landmarks"):
             image = cv2.imread(image_path)
@@ -152,7 +152,7 @@ def project(args, device='cuda'):
 
         # Save the 2D landmark coordinates to CSV files
         for image_idx in range(total_landmark_2D_array_transposed.shape[0]):
-            csv_file_path = f"{specimen_path}/{args.data_type}_projection_csv/landmarks_{image_idx:04d}.csv"
+            csv_file_path = f"{specimen_path}/{args.task_type}_projection_csv/landmarks_{image_idx:04d}.csv"
             # print(csv_file_path)
             with open(csv_file_path, 'w') as f:
                 f.write("x,y\n")
@@ -164,7 +164,7 @@ def project(args, device='cuda'):
                         f.write(f"{avg_x},{avg_y}\n")
 
         # Save the 2D landmark coordinates to a single CSV file
-        all_landmarks_csv_path = f"{specimen_path}/{args.data_type}_projection_csv/all_landmarks.csv"
+        all_landmarks_csv_path = f"{specimen_path}/{args.task_type}_projection_csv/all_landmarks.csv"
         with open(all_landmarks_csv_path, 'w') as f:
             f.write("image_index,x,y\n")
             for i in range(total_landmark_2D_array_transposed.shape[0]):
@@ -191,7 +191,7 @@ if __name__ == "__main__":
     parser.add_argument('--sample_size', type=int, default=100, help='Number of samples')
     parser.add_argument('--n_landmarks', type=int, default=100, help='Number of landmarks')
 
-    parser.add_argument('--data_type', type=str, default='easy', choices=['easy', 'medium', 'hard'], help="Data type to process")
+    parser.add_argument('--data_type', type=str, default='easy', choices=['easy', 'medium', 'hard'], help="Task type to process")
     parser.add_argument('--seed_value', type=int, default=42, help="Random seed for reproducibility")
 
     args = parser.parse_args()
