@@ -13,8 +13,12 @@ pip3 install opencv-python h5py numpy nibabel tqdm scipy diffdrr
 mkdir data
 wget --no-check-certificate -O data/ipcai_2020_full_res_data.zip "http://archive.data.jhu.edu/api/access/datafile/:persistentId/?persistentId=doi:10.7281/T1/IFSXNV/EAN9GH"
 
-CUDA_VISIBLE_DEVICES=7 python3 -m src.data.1_extract_content --sample_size 30
-CUDA_VISIBLE_DEVICES=7 python3 -m src.data.2_filter_segmentation --sample_size 30
-CUDA_VISIBLE_DEVICES=7 python3 -m src.data.3_sample_landmark --sample_size 30
-CUDA_VISIBLE_DEVICES=7 python3 -m src.data.4_project --sample_size 30
+CUDA_VISIBLE_DEVICES=7 python3 -m src.data.1_extract_content --sample_size 250
+CUDA_VISIBLE_DEVICES=7 python3 -m src.data.2_filter_segmentation --sample_size 250
+CUDA_VISIBLE_DEVICES=7 python3 -m src.data.3_sample_landmark --sample_size 250
+CUDA_VISIBLE_DEVICES=7 python3 -m src.data.4_project --sample_size 250 --data_type easy
+CUDA_VISIBLE_DEVICES=7 python3 -m src.data.4_project --sample_size 250 --data_type medium
+CUDA_VISIBLE_DEVICES=7 python3 -m src.data.4_project --sample_size 250 --data_type hard
 ```
+
+- Training Landmark Prediction Model

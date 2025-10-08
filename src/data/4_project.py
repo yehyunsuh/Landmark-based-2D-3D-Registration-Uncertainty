@@ -11,7 +11,7 @@ from tqdm import tqdm
 from diffdrr.drr import DRR
 from diffdrr.data import read
 
-from ..utils import set_seed
+from src.utils import set_seed
 
 
 def project(args, device='cuda'):
