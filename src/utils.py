@@ -1,6 +1,8 @@
 import os
+import ast
 import torch
 import random
+import argparse
 import numpy as np
 
 def set_seed(seed: int = 42):
@@ -27,3 +29,21 @@ def set_seed(seed: int = 42):
 
     # For some environments (like DataLoader workers)
     os.environ["PYTHONHASHSEED"] = str(seed)
+
+
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+        
+
+def arg_as_list(s):
+    v = ast.literal_eval(s)
+    if type(v) is not list:
+        raise argparse.ArgumentTypeError("Arguemtn \"%s\" is not a list" % (s))
+    return v
