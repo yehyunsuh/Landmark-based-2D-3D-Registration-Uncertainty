@@ -14,10 +14,11 @@ from torch.utils.data import Dataset, DataLoader, random_split
 
 
 class SegmentationDataset(Dataset):
-    def __init__(self, data_dir, image_resize=512, landmark_to_predict=0, dilation_iters=65, invisible_landmarks=True, data_type='train', task_type='easy'):
+    def __init__(self, data_dir, image_resize=512, n_landmarks=100, landmark_to_predict=0, dilation_iters=65, invisible_landmarks=True, data_type='train', task_type='easy'):
         self.data_dir = data_dir
         self.image_resize = image_resize
         self.samples = []
+        self.n_landmarks = n_landmarks
         self.landmark_to_predict = landmark_to_predict
         self.dilation_iters = dilation_iters
         self.invisible_landmarks = invisible_landmarks
@@ -27,27 +28,25 @@ class SegmentationDataset(Dataset):
         specimen_path_list = sorted(glob(f"{self.data_dir}/*"))
         for specimen_path in specimen_path_list:
             specimen_id = os.path.basename(specimen_path)
-
             csv_path = f'{self.data_dir}/{specimen_id}/{self.task_type}_model_csv/{self.data_type}_label.csv'
 
-            ######### 10/8
             with open(csv_path, 'r') as f:
                 reader = csv.reader(f)
                 header = next(reader)  # Skip header
                 for row in reader:
-                    case_id = row[0]
+                    specimen_id = row[0]
                     image_name = row[1]
                     coords = list(map(int, row[5:]))
                     assert len(coords) == 2 * n_landmarks, "Mismatch in number of landmark coordinates"
-                    landmarks = [(coords[i], coords[i + 1]) for i in range(0, len(coords), 2)]
-                    self.samples.append((case_id, image_name, landmarks))
+                    landmarks = [(coords[landmark_to_predict * 2], coords[landmark_to_predict * 2 + 1])]
+                    self.samples.append((specimen_id, image_name, landmarks))
 
     def __len__(self):
         return len(self.samples)
 
     def __getitem__(self, idx):
-        case_id, image_name, landmarks = self.samples[idx]
-        image_path = f'{self.image_dir}/{case_id}/images/{image_name}'
+        specimen_id, image_name, landmarks = self.samples[idx]
+        image_path = f'{self.data_dir}/{specimen_id}/{self.task_type}_projection_images/{specimen_id}_{image_name}'
 
         # Load and convert image
         image = cv2.imread(image_path)
@@ -69,7 +68,7 @@ class SegmentationDataset(Dataset):
 
         # Create mask with binary dilation for each landmark
         H, W = image_transformed.shape[1:]
-        masks = np.zeros((self.n_landmarks, H, W), dtype=np.uint8)
+        masks = np.zeros((1, H, W), dtype=np.uint8)
 
         for k, (x, y) in enumerate(landmarks_transformed):
             x = int(round(x))
@@ -88,7 +87,7 @@ class SegmentationDataset(Dataset):
                     masks[k, y, x] = 1
                     masks[k] = binary_dilation(masks[k], iterations=self.dilation_iters).astype(np.uint8)
         
-        if self.data_type == 'train':
+        if self.data_type == 'train' or self.data_type == 'val':
             mask = torch.from_numpy(masks).float()  # Shape: [n_landmarks, H, W]
             return image_transformed, mask, image_name, landmarks_transformed
         
@@ -166,23 +165,28 @@ def dataloader(args, data_type='train', epoch=0):
         preprocessing(args)
 
     if data_type =="train":
-        dataset = SegmentationDataset(
+        
+
+        val_dataset = SegmentationDataset(
             data_dir=args.data_dir,
             image_resize=args.image_resize,
+            n_landmarks=args.n_landmarks,
             landmark_to_predict=args.landmark_to_predict,
             dilation_iters=args.dilation_iters,
             invisible_landmarks=args.invisible_landmarks,
-            data_type=data_type,
+            data_type="val",
             task_type=args.task_type,
         )
 
-        # Train-validation split
-        train_size = int(0.9 * len(dataset))
-        val_size = len(dataset) - train_size
-        generator = torch.Generator().manual_seed(args.seed)
-
-        train_dataset, val_dataset = random_split(
-            dataset, [train_size, val_size], generator=generator
+        train_dataset = SegmentationDataset(
+            data_dir=args.data_dir,
+            image_resize=args.image_resize,
+            n_landmarks=args.n_landmarks,
+            landmark_to_predict=args.landmark_to_predict,
+            dilation_iters=args.dilation_iters,
+            invisible_landmarks=args.invisible_landmarks,
+            data_type="train",
+            task_type=args.task_type,
         )
 
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
@@ -195,13 +199,14 @@ def dataloader(args, data_type='train', epoch=0):
     
     elif data_type == "test":
         test_dataset = SegmentationDataset(
-            csv_path=os.path.join(args.ctpel_projection_csv, args.csv_file),
-            image_dir=args.image_dir,
+            data_dir=args.data_dir,
             image_resize=args.image_resize,
             n_landmarks=args.n_landmarks,
-            label_number=args.landmark_to_predict,
+            landmark_to_predict=args.landmark_to_predict,
+            dilation_iters=args.dilation_iters,
             invisible_landmarks=args.invisible_landmarks,
-            data_type=data_type
+            data_type="test",
+            task_type=args.task_type,
         )
 
         test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
