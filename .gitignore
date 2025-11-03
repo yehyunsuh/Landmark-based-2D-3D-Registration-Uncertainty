@@ -9,9 +9,11 @@ model_weight
 
 # Logging
 log
+wandb
 
 # Temporary
 *tmp*
+scripts
 
 # Cache
 __pycache__/

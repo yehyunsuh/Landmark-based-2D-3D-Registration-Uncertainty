@@ -210,13 +210,6 @@ def train(args, model, device):
                 evaluate_model.last_dice[:, c].mean().item()
             )
 
-    if args.gif:
-        create_gif(
-            args, gt_mask_w_coords_image_list,
-            pred_mask_w_coords_image_list_list,
-            coords_image_list
-        )
-
     plot_training_results(args, history)
 
     # Write training log to CSV

@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     # Wandb parameters
     parser.add_argument("--wandb", action="store_true", help="Enable Weights & Biases logging")
-    parser.add_argument("--wandb_project", type=str, default="Learn to Label Patient Specific Predictor", help="Weights & Biases project name")
+    parser.add_argument("--wandb_project", type=str, default="Landmark based Registration with Uncertainty", help="Weights & Biases project name")
     parser.add_argument("--wandb_entity", type=str, default="your_entity", help="Weights & Biases entity name")
     parser.add_argument("--wandb_name", type=str, default="baseline", help="Weights & Biases run name")
 
