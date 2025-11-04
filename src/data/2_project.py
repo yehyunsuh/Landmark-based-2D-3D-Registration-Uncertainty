@@ -38,8 +38,8 @@ def project(args, device='cuda'):
     specimen_path_list = sorted(glob(f"{args.data_dir}/{args.unzip_dir}/*"))
     for specimen_path in specimen_path_list:
         print(f"Processing specimen: {specimen_path}")
-        os.makedirs(f'{specimen_path}/{args.task_type}_{args.drr_dir}', exist_ok=True)
-        os.makedirs(f'{specimen_path}/{args.task_type}_{args.drr_csv_dir}', exist_ok=True)
+        os.makedirs(f'{specimen_path}/{args.drr_dir}_{args.task_type}', exist_ok=True)
+        os.makedirs(f'{specimen_path}/{args.drr_csv_dir}_{args.task_type}', exist_ok=True)
 
         specimen_id = os.path.basename(specimen_path)
         specimen_volume_path = os.path.join(specimen_path, f"{specimen_id}_CT.nii.gz")
@@ -73,22 +73,50 @@ def project(args, device='cuda'):
 
         total_landmark_2D_array = np.zeros((n_landmarks, sample_size, 2), dtype=np.float32)
 
-        # Pre-generate random rotations and translations
-        r1 = np.random.uniform(np.deg2rad(rotation_range[0][0]), np.deg2rad(rotation_range[0][1]), sample_size)
-        r2 = np.random.uniform(np.deg2rad(rotation_range[1][0]), np.deg2rad(rotation_range[1][1]), sample_size)
-        r3 = np.random.uniform(np.deg2rad(rotation_range[2][0]), np.deg2rad(rotation_range[2][1]), sample_size)
-        rotations_list = torch.tensor(np.vstack([r1, r2, r3]).T, dtype=torch.float32)
-        rotations_list += manual_rotations_list
+        # ======================================================
+        # --- Controlled generation of rotations / translations ---
+        # ======================================================
+        n_rot_only = int(sample_size // 3)  # 200
+        n_trans_only = int(sample_size // 3)  # 200
+        n_both = sample_size - n_rot_only - n_trans_only  # 200
 
-        tx = np.random.uniform(translation_range[0][0], translation_range[0][1], sample_size)
-        ty = np.random.uniform(translation_range[1][0], translation_range[1][1], sample_size)
-        tz = np.random.uniform(translation_range[2][0], translation_range[2][1], sample_size)
-        translations_list = torch.tensor(np.vstack([tx, ty, tz]).T, dtype=torch.float32)
-        translations_list += manual_translations_list
+        # --- Initialize zero arrays for all 500 ---
+        rotations_all = np.zeros((sample_size, 3), dtype=np.float32)
+        translations_all = np.zeros((sample_size, 3), dtype=np.float32)
 
-        # Set the first projection to the manual pose
+        # --- Subset A: random rotation only ---
+        r1 = np.random.uniform(np.deg2rad(rotation_range[0][0]), np.deg2rad(rotation_range[0][1]), n_rot_only)
+        r2 = np.random.uniform(np.deg2rad(rotation_range[1][0]), np.deg2rad(rotation_range[1][1]), n_rot_only)
+        r3 = np.random.uniform(np.deg2rad(rotation_range[2][0]), np.deg2rad(rotation_range[2][1]), n_rot_only)
+        rotations_all[:n_rot_only, :] = np.vstack([r1, r2, r3]).T
+
+        # --- Subset B: random translation only ---
+        tx = np.random.uniform(translation_range[0][0], translation_range[0][1], n_trans_only)
+        ty = np.random.uniform(translation_range[1][0], translation_range[1][1], n_trans_only)
+        tz = np.random.uniform(translation_range[2][0], translation_range[2][1], n_trans_only)
+        translations_all[n_rot_only:n_rot_only + n_trans_only, :] = np.vstack([tx, ty, tz]).T
+
+        # --- Subset C: both random rotation & translation ---
+        start_idx = n_rot_only + n_trans_only
+        r1 = np.random.uniform(np.deg2rad(rotation_range[0][0]), np.deg2rad(rotation_range[0][1]), n_both)
+        r2 = np.random.uniform(np.deg2rad(rotation_range[1][0]), np.deg2rad(rotation_range[1][1]), n_both)
+        r3 = np.random.uniform(np.deg2rad(rotation_range[2][0]), np.deg2rad(rotation_range[2][1]), n_both)
+        rotations_all[start_idx:, :] = np.vstack([r1, r2, r3]).T
+
+        tx = np.random.uniform(translation_range[0][0], translation_range[0][1], n_both)
+        ty = np.random.uniform(translation_range[1][0], translation_range[1][1], n_both)
+        tz = np.random.uniform(translation_range[2][0], translation_range[2][1], n_both)
+        translations_all[start_idx:, :] = np.vstack([tx, ty, tz]).T
+
+        # Convert to tensors and add manual offsets
+        rotations_list = torch.tensor(rotations_all, dtype=torch.float32) + manual_rotations_list
+        translations_list = torch.tensor(translations_all, dtype=torch.float32) + manual_translations_list
+
+        # --- Ensure the first sample is always the manual pose ---
         rotations_list[0] = manual_rotations_list[0]
         translations_list[0] = manual_translations_list[0]
+
+        print(f"Generated {n_rot_only} rot-only, {n_trans_only} trans-only, {n_both} both (total {sample_size}) samples.")
         
         for i in tqdm(range(sample_size), desc="Generating DRRs"):
             ct_volume = read(
@@ -106,8 +134,6 @@ def project(args, device='cuda'):
 
             rx, ry, rz = rotations_list[i].to(device)
             tx, ty, tz = translations_list[i].to(device)
-            # rx, ry, rz = torch.tensor([0.0, 0.0, 0.0], device=device)
-            # tx, ty, tz = torch.tensor([50.0, 500.0, 50.0], device=device)
             rotations = torch.tensor([[rx, ry, rz]], device=device)
             translations = torch.tensor([[tx, ty, tz]], device=device)
 
@@ -115,7 +141,7 @@ def project(args, device='cuda'):
             img_np = img.squeeze().detach().cpu().numpy()
             img_norm = (img_np - img_np.min()) / (img_np.max() - img_np.min())
             img_uint8 = (img_norm * 255).astype(np.uint8)
-            cv2.imwrite(f'{specimen_path}/{args.task_type}_{args.drr_dir}/{specimen_id}_{i:04d}.png', img_uint8)
+            cv2.imwrite(f'{specimen_path}/{args.drr_dir}_{args.task_type}/{specimen_id}_{i:04d}.png', img_uint8)
             del img, img_np, img_norm, img_uint8  # Free memory
 
             # break  # For testing, remove this line for full processing
@@ -172,7 +198,7 @@ def project(args, device='cuda'):
             total_landmark_2D_array[idx, :, :] = np.array(landmark_2D_array)
         total_landmark_2D_array_transposed = total_landmark_2D_array.transpose(1, 0, 2)
 
-        image_path_list = sorted(glob(f"{specimen_path}/{args.task_type}_{args.drr_dir}/{specimen_id}_*.png"))[:10]
+        image_path_list = sorted(glob(f"{specimen_path}/{args.drr_dir}_{args.task_type}/{specimen_id}_*.png"))[:10]
         os.makedirs(f'visualization_tmp/overlay/{specimen_id}', exist_ok=True)
         for i, image_path in tqdm(enumerate(image_path_list), desc="Overlaying Landmarks"):
             image = cv2.imread(image_path)
@@ -185,7 +211,7 @@ def project(args, device='cuda'):
 
         # Save the 2D landmark coordinates to CSV files
         for image_idx in range(total_landmark_2D_array_transposed.shape[0]):
-            csv_file_path = f"{specimen_path}/{args.task_type}_{args.drr_csv_dir}/landmarks_{image_idx:04d}.csv"
+            csv_file_path = f"{specimen_path}/{args.drr_csv_dir}_{args.task_type}/landmarks_{image_idx:04d}.csv"
             # print(csv_file_path)
             with open(csv_file_path, 'w') as f:
                 f.write("x,y\n")
@@ -197,7 +223,7 @@ def project(args, device='cuda'):
                         f.write(f"{avg_x},{avg_y}\n")
 
         # Save the 2D landmark coordinates to a single CSV file
-        all_landmarks_csv_path = f"{specimen_path}/{args.task_type}_{args.drr_csv_dir}/all_landmarks.csv"
+        all_landmarks_csv_path = f"{specimen_path}/{args.drr_csv_dir}_{args.task_type}/all_landmarks.csv"
         with open(all_landmarks_csv_path, 'w') as f:
             f.write("image_index,x,y\n")
             for i in range(total_landmark_2D_array_transposed.shape[0]):
@@ -221,7 +247,7 @@ if __name__ == "__main__":
     parser.add_argument('--sdd', type=float, default=1020.0, help='Source to Detector Distance')
     parser.add_argument('--height', type=int, default=512, help='Image height')
     parser.add_argument('--width', type=int, default=512, help='Image width')
-    parser.add_argument('--sample_size', type=int, default=500, help='Number of samples')
+    parser.add_argument('--sample_size', type=int, default=600, help='Number of samples')
     parser.add_argument('--n_landmarks', type=int, default=14, help='Number of landmarks')
 
     parser.add_argument('--task_type', type=str, default='easy', choices=['easy', 'medium', 'hard'], help="Task type to process")

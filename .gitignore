@@ -10,6 +10,7 @@ model_weight
 # Logging
 log
 wandb
+*.out
 
 # Temporary
 *tmp*
