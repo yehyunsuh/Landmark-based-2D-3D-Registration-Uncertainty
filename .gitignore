@@ -13,6 +13,7 @@ wandb
 
 # Temporary
 *tmp*
+.DS_Store
 scripts
 
 # Cache
