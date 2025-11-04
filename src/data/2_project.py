@@ -1,4 +1,5 @@
 import os
+import re
 import cv2
 import torch
 import argparse
@@ -8,10 +9,10 @@ import nibabel as nib
 from glob import glob
 from tqdm import tqdm
 
+from src.utils import set_seed
+
 from diffdrr.drr import DRR
 from diffdrr.data import read
-
-from src.utils import set_seed
 
 
 def project(args, device='cuda'):
@@ -32,16 +33,39 @@ def project(args, device='cuda'):
         # translation_range = [(-50, 50), (450, 550), (-50, 50)]  # mm
     else:
         raise ValueError("Unknown data type")
-    translation_range = [(-50, 50), (450, 550), (-50, 50)]  # mm
+    translation_range = [(-50, 50), (-50, 50), (-50, 50)]  # mm
 
     specimen_path_list = sorted(glob(f"{args.data_dir}/{args.unzip_dir}/*"))
     for specimen_path in specimen_path_list:
         print(f"Processing specimen: {specimen_path}")
-        os.makedirs(f'{specimen_path}/{args.task_type}_projection_images', exist_ok=True)
-        os.makedirs(f'{specimen_path}/{args.task_type}_projection_csv', exist_ok=True)
+        os.makedirs(f'{specimen_path}/{args.task_type}_{args.drr_dir}', exist_ok=True)
+        os.makedirs(f'{specimen_path}/{args.task_type}_{args.drr_csv_dir}', exist_ok=True)
 
         specimen_id = os.path.basename(specimen_path)
-        specimen_volume_path = os.path.join(specimen_path, f"{specimen_id}.nii.gz")
+        specimen_volume_path = os.path.join(specimen_path, f"{specimen_id}_CT.nii.gz")
+
+        manual_rotations_list = torch.tensor([[0.0, 0.0, 0.0]])
+        manual_translations_list = torch.tensor([[0.0, 400.0, 0.0]])
+        if specimen_id == '17-1882':
+            # manual_rotations_list = torch.tensor([[0.0, 0.0, 0.0]])
+            manual_translations_list = torch.tensor([[0.0, 400.0, -20.0]])
+        elif specimen_id == '17-1905':
+            # manual_rotations_list = torch.tensor([[0.0, 0.0, 0.0]])
+            manual_translations_list = torch.tensor([[0.0, 400.0, 0.0]])
+        elif specimen_id == '18-0725':
+            # manual_rotations_list = torch.tensor([[0.0, 0.0, 0.0]])
+            manual_translations_list = torch.tensor([[0.0, 400.0, 70.0]])
+        elif specimen_id == '18-1109':
+            # manual_rotations_list = torch.tensor([[0.0, 0.0, 0.0]])
+            manual_translations_list = torch.tensor([[0.0, 400.0, 50.0]])
+        elif specimen_id == '18-2799':
+            # manual_rotations_list = torch.tensor([[0.0, 0.0, 0.0]])
+            manual_translations_list = torch.tensor([[0.0, 400.0, 40.0]])
+        elif specimen_id == '18-2800':
+            # manual_rotations_list = torch.tensor([[0.0, 0.0, 0.0]])
+            manual_translations_list = torch.tensor([[0.0, 400.0, 0.0]])
+        else:
+            raise ValueError("Unknown specimen ID")
 
         ct_image = nib.load(specimen_volume_path)
         ct_header = ct_image.header
@@ -54,15 +78,17 @@ def project(args, device='cuda'):
         r2 = np.random.uniform(np.deg2rad(rotation_range[1][0]), np.deg2rad(rotation_range[1][1]), sample_size)
         r3 = np.random.uniform(np.deg2rad(rotation_range[2][0]), np.deg2rad(rotation_range[2][1]), sample_size)
         rotations_list = torch.tensor(np.vstack([r1, r2, r3]).T, dtype=torch.float32)
+        rotations_list += manual_rotations_list
 
         tx = np.random.uniform(translation_range[0][0], translation_range[0][1], sample_size)
         ty = np.random.uniform(translation_range[1][0], translation_range[1][1], sample_size)
         tz = np.random.uniform(translation_range[2][0], translation_range[2][1], sample_size)
         translations_list = torch.tensor(np.vstack([tx, ty, tz]).T, dtype=torch.float32)
+        translations_list += manual_translations_list
 
-        # Always set the first view to be the canonical view
-        rotations_list[0] = torch.tensor([0.0, 0.0, 0.0])
-        translations_list[0] = torch.tensor([0.0, 500.0, 0.0])
+        # Set the first projection to the manual pose
+        rotations_list[0] = manual_rotations_list[0]
+        translations_list[0] = manual_translations_list[0]
         
         for i in tqdm(range(sample_size), desc="Generating DRRs"):
             ct_volume = read(
@@ -89,11 +115,16 @@ def project(args, device='cuda'):
             img_np = img.squeeze().detach().cpu().numpy()
             img_norm = (img_np - img_np.min()) / (img_np.max() - img_np.min())
             img_uint8 = (img_norm * 255).astype(np.uint8)
-            cv2.imwrite(f'{specimen_path}/{args.task_type}_projection_images/{specimen_id}_{i:04d}.png', img_uint8)
+            cv2.imwrite(f'{specimen_path}/{args.task_type}_{args.drr_dir}/{specimen_id}_{i:04d}.png', img_uint8)
             del img, img_np, img_norm, img_uint8  # Free memory
 
-        landmark_dir = os.path.join(specimen_path, 'sampled_landmarks_3d')
-        landmark_files = sorted(glob(f"{landmark_dir}/{specimen_id}_landmark_*.nii.gz"))
+            # break  # For testing, remove this line for full processing
+
+        landmark_dir = os.path.join(specimen_path, 'gt_landmarks_3D')
+        landmark_files = sorted(
+            glob(f"{landmark_dir}/{specimen_id}_Landmark_*.nii.gz"),
+            key=lambda x: int(re.search(r"_Landmark_(\d+)_", os.path.basename(x)).group(1))
+        )
         
         for idx, landmark_file in enumerate(landmark_files):
             print(f"Processing landmark {idx + 1}/{len(landmark_files)}: {landmark_file}")
@@ -135,11 +166,13 @@ def project(args, device='cuda'):
                     landmark_2D_array[i] = (avg_x, avg_y)
 
                 del img, img_np, img_norm, img_uint8
+
+                # break  # For testing, remove this line for full processing
             
             total_landmark_2D_array[idx, :, :] = np.array(landmark_2D_array)
         total_landmark_2D_array_transposed = total_landmark_2D_array.transpose(1, 0, 2)
 
-        image_path_list = sorted(glob(f"{specimen_path}/{args.task_type}_projection_images/{specimen_id}_*.png"))[:10]
+        image_path_list = sorted(glob(f"{specimen_path}/{args.task_type}_{args.drr_dir}/{specimen_id}_*.png"))[:10]
         os.makedirs(f'visualization_tmp/overlay/{specimen_id}', exist_ok=True)
         for i, image_path in tqdm(enumerate(image_path_list), desc="Overlaying Landmarks"):
             image = cv2.imread(image_path)
@@ -152,7 +185,7 @@ def project(args, device='cuda'):
 
         # Save the 2D landmark coordinates to CSV files
         for image_idx in range(total_landmark_2D_array_transposed.shape[0]):
-            csv_file_path = f"{specimen_path}/{args.task_type}_projection_csv/landmarks_{image_idx:04d}.csv"
+            csv_file_path = f"{specimen_path}/{args.task_type}_{args.drr_csv_dir}/landmarks_{image_idx:04d}.csv"
             # print(csv_file_path)
             with open(csv_file_path, 'w') as f:
                 f.write("x,y\n")
@@ -164,7 +197,7 @@ def project(args, device='cuda'):
                         f.write(f"{avg_x},{avg_y}\n")
 
         # Save the 2D landmark coordinates to a single CSV file
-        all_landmarks_csv_path = f"{specimen_path}/{args.task_type}_projection_csv/all_landmarks.csv"
+        all_landmarks_csv_path = f"{specimen_path}/{args.task_type}_{args.drr_csv_dir}/all_landmarks.csv"
         with open(all_landmarks_csv_path, 'w') as f:
             f.write("image_index,x,y\n")
             for i in range(total_landmark_2D_array_transposed.shape[0]):
@@ -175,7 +208,7 @@ def project(args, device='cuda'):
                         f.write(f"{i},{avg_x},{avg_y}\n")
 
         # Save the landmark 2D coordinates to a .npy file
-        landmark_2d_npy_path = f"{specimen_path}/landmarks_2d.npy"
+        landmark_2d_npy_path = f"{specimen_path}/drr_landmarks_2D.npy"
         np.save(landmark_2d_npy_path, total_landmark_2D_array_transposed)
         
 
@@ -188,15 +221,19 @@ if __name__ == "__main__":
     parser.add_argument('--sdd', type=float, default=1020.0, help='Source to Detector Distance')
     parser.add_argument('--height', type=int, default=512, help='Image height')
     parser.add_argument('--width', type=int, default=512, help='Image width')
-    parser.add_argument('--sample_size', type=int, default=100, help='Number of samples')
-    parser.add_argument('--n_landmarks', type=int, default=100, help='Number of landmarks')
+    parser.add_argument('--sample_size', type=int, default=500, help='Number of samples')
+    parser.add_argument('--n_landmarks', type=int, default=14, help='Number of landmarks')
 
-    parser.add_argument('--data_type', type=str, default='easy', choices=['easy', 'medium', 'hard'], help="Task type to process")
-    parser.add_argument('--seed_value', type=int, default=42, help="Random seed for reproducibility")
+    parser.add_argument('--task_type', type=str, default='easy', choices=['easy', 'medium', 'hard'], help="Task type to process")
+    parser.add_argument('--seed_value', type=int, default=42, help="Fix seed for reproducibility")
+
+    parser.add_argument('--drr_dir', type=str, default='drr_projections', help='Directory name to save the DRR projections')
+    parser.add_argument('--drr_csv_dir', type=str, default='drr_projections_csv', help='Directory name to save the DRR projections CSV files')
 
     args = parser.parse_args()
     
     set_seed(args.seed_value)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f"Using device: {device}")
 
     project(args, device)

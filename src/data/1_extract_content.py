@@ -11,7 +11,7 @@ def process_patient_group(patient_id, group, output_path, sphere_radius=3):
     os.makedirs(output_path, exist_ok=True)
 
     # ======================================================
-    # --- CT Volume Extraction (aligned with working code) ---
+    # --- CT Volume Extraction ---
     # ======================================================
     if "vol" in group and "pixels" in group["vol"]:
         print(f"\n=== Processing specimen '{patient_id}' ===")
@@ -45,7 +45,7 @@ def process_patient_group(patient_id, group, output_path, sphere_radius=3):
         print(f"✅ Saved CT volume: {ct_path}")
 
     # ======================================================
-    # --- Segmentation (unchanged logic) ---
+    # --- Segmentation ---
     # ======================================================
     if "vol-seg" in group and "image" in group["vol-seg"]:
         seg = group["vol-seg"]["image"]["pixels"][()].astype(np.float32)
@@ -64,14 +64,15 @@ def process_patient_group(patient_id, group, output_path, sphere_radius=3):
         nib.save(seg_nifti, os.path.join(output_path, f"{patient_id}_Segmentation.nii.gz"))
 
     # ======================================================
-    # --- 3D Landmarks Extraction (aligned with working code) ---
+    # --- 3D Landmarks Extraction ---
     # ======================================================
     if "vol-landmarks" in group:
+        os.makedirs(os.path.join(output_path, "gt_landmarks_3D"), exist_ok=True)
         lands_g = group["vol-landmarks"]
         landmark_names = list(lands_g.keys())
         landmark_coords = np.array([lands_g[name][()] for name in landmark_names])
 
-        # --- (NEW) Save raw 3D coordinates as JSON ---
+        # --- Save raw 3D coordinates as JSON ---
         landmarks_dict = {name: lands_g[name][()].tolist() for name in landmark_names}
         with open(os.path.join(output_path, "gt_landmarks_3D.json"), "w") as f_json:
             json.dump(landmarks_dict, f_json, indent=2)
@@ -87,7 +88,8 @@ def process_patient_group(patient_id, group, output_path, sphere_radius=3):
             x, y, z = voxel
             label_value = idx
 
-            # Draw labeled sphere
+            # Draw labeled sphere (and store for single files)
+            mask = np.zeros_like(lm_vol, dtype=np.uint8)
             for i in range(-sphere_radius, sphere_radius + 1):
                 for j in range(-sphere_radius, sphere_radius + 1):
                     for k in range(-sphere_radius, sphere_radius + 1):
@@ -99,21 +101,27 @@ def process_patient_group(patient_id, group, output_path, sphere_radius=3):
                                 and 0 <= zi < lm_vol.shape[2]
                             ):
                                 lm_vol[xi, yi, zi] = label_value
+                                mask[xi, yi, zi] = 1  # for single landmark file
 
-        # Save labeled landmark volume
-        lm_path = os.path.join(output_path, f"{patient_id}_Landmark.nii.gz")
+            # --- Save individual landmark NIfTI ---
+            single_lm_path = os.path.join(output_path, 'gt_landmarks_3D', f"{patient_id}_Landmark_{idx:02d}_{landmark_names[idx-1]}.nii.gz")
+            nib.save(nib.Nifti1Image(mask.astype(np.uint8), affine), single_lm_path)
+
+        # --- Save combined labeled landmark map ---
+        lm_path = os.path.join(output_path, f"{patient_id}_Landmarks_3D.nii.gz")
         nib.save(nib.Nifti1Image(lm_vol, affine), lm_path)
-        print(f"✅ Saved Labeled Landmarks: {lm_path}")
+        print(f"✅ Saved Combined Landmark Volume: {lm_path}")
 
-        # Save label name map
-        name_map_path = os.path.join(output_path, f"{patient_id}_Landmark.txt")
+        # --- Save label index-name mapping ---
+        name_map_path = os.path.join(output_path, f"{patient_id}_Landmarks_3D.txt")
         with open(name_map_path, "w") as ftxt:
             for idx, name in enumerate(landmark_names, start=1):
                 ftxt.write(f"{idx}\t{name}\n")
         print(f"✅ Saved Landmark Label Map: {name_map_path}")
+        print(f"✅ Saved {len(landmark_names)} single-landmark NIfTI files.")
 
     # ======================================================
-    # --- Projection Images (unchanged logic) ---
+    # --- Projection Images ---
     # ======================================================
     if "projections" in group:
         proj_dir = os.path.join(output_path, "gt_projections")
@@ -168,9 +176,12 @@ def extract_content(args):
             patient_output_path = os.path.join(args.data_dir, args.unzip_dir, patient_id)
             process_patient_group(patient_id, group, patient_output_path)
 
-    # os.remove(f'{args.data_dir}/{args.zip_file}')
-    # os.remove(f'{args.data_dir}/{args.h5_file}')
-    os.remove(f'{args.data_dir}/LICENSE')
+    # if os.path.exists(f'{args.data_dir}/{args.zip_file}'):
+    #     os.remove(f'{args.data_dir}/{args.zip_file}')
+    # if os.path.exists(f'{args.data_dir}/{args.h5_file}'):
+    #     os.remove(f'{args.data_dir}/{args.h5_file}')
+    if os.path.exists(f'{args.data_dir}/LICENSE'):
+        os.remove(f'{args.data_dir}/LICENSE')
 
 
 if __name__ == "__main__":
