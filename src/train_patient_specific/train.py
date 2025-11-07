@@ -185,12 +185,12 @@ def train(args, model, device):
 
         if mean_dist < best_mean_error:
             best_mean_error = mean_dist
-            torch.save(model.state_dict(), f"{args.model_weight_dir}/{args.wandb_name}_label{args.landmark_to_predict}_dist.pth")
+            torch.save(model.state_dict(), f"{args.model_weight_dir}/{args.model_type}/{args.wandb_name}_dist.pth")
             print("✅ Saved new best model based on mean distance!")
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            torch.save(model.state_dict(), f"{args.model_weight_dir}/{args.wandb_name}_label{args.landmark_to_predict}_loss.pth")
+            torch.save(model.state_dict(), f"{args.model_weight_dir}/{args.model_type}/{args.wandb_name}_loss.pth")
             print("✅ Saved new best model based on validation loss!")
 
         if args.wandb:
@@ -210,7 +210,7 @@ def train(args, model, device):
                 evaluate_model.last_dice[:, c].mean().item()
             )
 
-    plot_training_results(args, history)
+    plot_training_results(args, history, graph_dir=f"{args.result_dir}/graph")
 
     # Write training log to CSV
     rows = []
@@ -236,5 +236,5 @@ def train(args, model, device):
     columns += ["best_val_loss", "best_mean_error"]
 
     df = pd.DataFrame(rows, columns=columns)
-    df.to_csv(f"{args.result_dir}/{args.wandb_name}/train_results/training_log.csv", index=False)
+    df.to_csv(f"{args.result_dir}/train_results/training_log.csv", index=False)
     print(f"📄 Saved training log to {args.wandb_name}/train_results/training_log.csv")

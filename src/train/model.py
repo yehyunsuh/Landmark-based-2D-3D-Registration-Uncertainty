@@ -11,7 +11,7 @@ def UNet(args, device):
         encoder_weights='imagenet',
         decoder_channels=args.decoder_channels,
         in_channels=3,
-        classes=1,
+        classes=args.n_landmarks,
         activation='sigmoid',  # This will be removed below
     )
 

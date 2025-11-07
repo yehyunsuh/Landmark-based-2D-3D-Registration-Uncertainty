@@ -32,11 +32,11 @@ def overlay_gt_masks(args, images, masks, pred_coords, gt_coords, epoch, total_e
             cv2.circle(overlay, (px, py), 4, (0, 0, 255), -1)
 
         if epoch % 10 == 0 or epoch == total_epoch - 1:
-            os.makedirs(f"{args.vis_dir}/{args.wandb_name}/Epoch{epoch}", exist_ok=True)
+            os.makedirs(f"{args.vis_dir}/Epoch{epoch}", exist_ok=True)
             cv2.imwrite(
-                f"{args.vis_dir}/{args.wandb_name}/Epoch{epoch}/Epoch{epoch}_Batch{idx}_overlay_gt.png", overlay
+                f"{args.vis_dir}/Epoch{epoch}/Epoch{epoch}_Batch{idx}_overlay_gt.png", overlay
             )
-        cv2.imwrite(f"{args.vis_dir}/{args.wandb_name}/Batch{idx}_overlay_gt.png", overlay)
+        cv2.imwrite(f"{args.vis_dir}/Batch{idx}_overlay_gt.png", overlay)
 
         return overlay
 
@@ -69,11 +69,11 @@ def overlay_pred_masks(args, images, outputs, pred_coords, gt_coords, epoch, tot
             cv2.circle(overlay, (px, py), 4, (0, 0, 255), -1)
 
             if epoch % 10 == 0 or epoch == total_epoch - 1:
-                os.makedirs(f"{args.vis_dir}/{args.wandb_name}/Epoch{epoch}", exist_ok=True)
+                os.makedirs(f"{args.vis_dir}/Epoch{epoch}", exist_ok=True)
                 cv2.imwrite(
-                    f"{args.vis_dir}/{args.wandb_name}/Epoch{epoch}/Epoch{epoch}_Batch{idx}_Landmark{c}.png", overlay
+                    f"{args.vis_dir}/Epoch{epoch}/Epoch{epoch}_Batch{idx}_Landmark{c}.png", overlay
                 )
-            cv2.imwrite(f"{args.vis_dir}/{args.wandb_name}/Batch{idx}_Landmark{c}.png", overlay)
+            cv2.imwrite(f"{args.vis_dir}/Batch{idx}_Landmark{c}.png", overlay)
 
             overlay_list.append(overlay)
 
@@ -99,11 +99,11 @@ def overlay_pred_coords(args, images, pred_coords, gt_coords, epoch, total_epoch
             cv2.circle(img, (px, py), 4, (0, 0, 255), -1)
 
         if epoch % 10 == 0 or epoch == total_epoch - 1:
-            os.makedirs(f"{args.vis_dir}/{args.wandb_name}/Epoch{epoch}", exist_ok=True)
+            os.makedirs(f"{args.vis_dir}/Epoch{epoch}", exist_ok=True)
             cv2.imwrite(
-                f"{args.vis_dir}/{args.wandb_name}/Epoch{epoch}/Epoch{epoch}_Batch{idx}_overlay_pred.png", img
+                f"{args.vis_dir}/Epoch{epoch}/Epoch{epoch}_Batch{idx}_overlay_pred.png", img
             )
-        cv2.imwrite(f"{args.vis_dir}/{args.wandb_name}/Batch{idx}_overlay_pred.png", img)
+        cv2.imwrite(f"{args.vis_dir}/Batch{idx}_overlay_pred.png", img)
 
         return img
 
@@ -135,15 +135,15 @@ def create_gif(args, gt_mask_w_coords_image_list, pred_mask_w_coords_image_list_
 
     coords_frames = convert_to_numpy(coords_image_list)
 
-    # imageio.mimsave(f"{args.result_dir}/{args.wandb_name}/gt_mask_with_coords.gif", gt_mask_frames, fps=10)
+    # imageio.mimsave(f"{args.vis_dir}/gt_mask_with_coords.gif", gt_mask_frames, fps=10)
     # for i, frames in enumerate(pred_mask_frames):
-    #     imageio.mimsave(f"{args.result_dir}/{args.wandb_name}/pred_mask_with_coords_{i}.gif", frames, fps=10)
-    imageio.mimsave(f"{args.result_dir}/{args.wandb_name}/pred_coords_only.gif", coords_frames, fps=10)
+    #     imageio.mimsave(f"{args.vis_dir}/pred_mask_with_coords_{i}.gif", frames, fps=10)
+    imageio.mimsave(f"{args.vis_dir}/pred_coords_only.gif", coords_frames, fps=10)
 
     print("🖼️ Saved training progress GIFs to train_results/")
 
 
-def plot_training_results(args, history):
+def plot_training_results(args, history, graph_dir):
     # Loss curve
     plt.figure(figsize=(12, 8))
     plt.plot(history["epoch"], history["train_loss"], label="Train Loss")
@@ -152,7 +152,8 @@ def plot_training_results(args, history):
     plt.ylabel("Loss")
     plt.legend()
     plt.grid(True)
-    plt.savefig(f"{args.result_dir}/{args.wandb_name}/graph/loss_curve.png")
+    # plt.savefig(f"{args.result_dir}/{args.wandb_name}/graph/loss_curve.png")
+    plt.savefig(f"{graph_dir}/loss_curve.png")
 
     # Mean landmark error
     plt.figure(figsize=(12, 8))
@@ -160,7 +161,8 @@ def plot_training_results(args, history):
     plt.xlabel("Epoch")
     plt.ylabel("Error (px)")
     plt.grid(True)
-    plt.savefig(f"{args.result_dir}/{args.wandb_name}/graph/mean_landmark_error.png")
+    # plt.savefig(f"{args.result_dir}/{args.wandb_name}/graph/mean_landmark_error.png")
+    plt.savefig(f"{graph_dir}/mean_landmark_error.png")
 
     # Log-scale version
     plt.figure(figsize=(12, 8))
@@ -171,7 +173,8 @@ def plot_training_results(args, history):
     plt.xlabel("Epoch")
     plt.ylabel("Error (px)")
     plt.grid(True, which='both', linestyle='--')
-    plt.savefig(f"{args.result_dir}/{args.wandb_name}/graph/mean_landmark_error_log.png")
+    # plt.savefig(f"{args.result_dir}/{args.wandb_name}/graph/mean_landmark_error_log.png")
+    plt.savefig(f"{graph_dir}/mean_landmark_error_log.png")
 
     # Per-landmark error
     plt.figure(figsize=(12, 8))
@@ -181,7 +184,8 @@ def plot_training_results(args, history):
     plt.ylabel("Error (px)")
     plt.legend()
     plt.grid(True)
-    plt.savefig(f"{args.result_dir}/{args.wandb_name}/graph/per_landmark_error.png")
+    # plt.savefig(f"{args.result_dir}/{args.wandb_name}/graph/per_landmark_error.png")
+    plt.savefig(f"{graph_dir}/per_landmark_error.png")
 
     # Log-scale per-landmark error
     plt.figure(figsize=(12, 8))
@@ -194,7 +198,8 @@ def plot_training_results(args, history):
     plt.ylabel("Error (px)")
     plt.legend()
     plt.grid(True, which='both', linestyle='--')
-    plt.savefig(f"{args.result_dir}/{args.wandb_name}/graph/per_landmark_error_log.png")
+    # plt.savefig(f"{args.result_dir}/{args.wandb_name}/graph/per_landmark_error_log.png")
+    plt.savefig(f"{graph_dir}/per_landmark_error_log.png")
 
     # Mean Dice score
     plt.figure(figsize=(12, 8))
@@ -202,7 +207,8 @@ def plot_training_results(args, history):
     plt.xlabel("Epoch")
     plt.ylabel("Dice Score")
     plt.grid(True)
-    plt.savefig(f"{args.result_dir}/{args.wandb_name}/graph/mean_dice_score.png")
+    # plt.savefig(f"{args.result_dir}/{args.wandb_name}/graph/mean_dice_score.png")
+    plt.savefig(f"{graph_dir}/mean_dice_score.png")
 
     # Per-landmark Dice scores
     plt.figure(figsize=(12, 8))
@@ -212,6 +218,7 @@ def plot_training_results(args, history):
     plt.ylabel("Dice Score")
     plt.legend()
     plt.grid(True)
-    plt.savefig(f"{args.result_dir}/{args.wandb_name}/graph/per_landmark_dice.png")
+    # plt.savefig(f"{args.result_dir}/{args.wandb_name}/graph/per_landmark_dice.png")
+    plt.savefig(f"{graph_dir}/per_landmark_dice.png")
 
     plt.close("all")

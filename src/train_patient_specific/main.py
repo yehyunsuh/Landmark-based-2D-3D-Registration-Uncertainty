@@ -30,6 +30,7 @@ if __name__ == "__main__":
     # Reproducibility
     parser.add_argument("--seed", type=int, default=42, help="Seed for reproducibility")
     parser.add_argument("--specimen_id", type=str, default="17-1882", help="Specimen ID for patient-specific training")
+    parser.add_argument("--model_type", type=str, default="patient_specific", help="Type of model")
 
     # Data paths
     parser.add_argument("--data_dir", type=str, default="data/DeepFluoro", help="Directory containing training images")
@@ -48,15 +49,11 @@ if __name__ == "__main__":
 
     # Training parameters
     parser.add_argument("--preprocess", action="store_true", help="Run preprocessing before training")
-    parser.add_argument("--batch_size", type=int, default=18, help="Batch size for training")
+    parser.add_argument("--batch_size", type=int, default=12, help="Batch size for training")
     parser.add_argument("--epochs", type=int, default=350, help="Number of training epochs")
     parser.add_argument("--dilation_iters", type=int, default=65, help="Number of iterations for binary dilation")
     parser.add_argument("--erosion_freq", type=int, default=50, help="Apply erosion every N epochs")
     parser.add_argument("--erosion_iters", type=int, default=10, help="Number of iterations for binary erosion")
-
-    # Visualization options
-    parser.add_argument("--vis_dir", type=str, default="visualizations", help="Directory to save visualization results")
-    parser.add_argument("--result_dir", type=str, default="results", help="Directory to save training results")
 
     # Wandb parameters
     parser.add_argument("--wandb", action="store_true", help="Enable Weights & Biases logging")
@@ -70,9 +67,14 @@ if __name__ == "__main__":
     set_seed(args.seed)
 
     # Create necessary directories
-    os.makedirs(f"{args.result_dir}/patient_specific/{args.wandb_name}/visualization", exist_ok=True)
-    os.makedirs(f"{args.result_dir}/patient_specific/{args.wandb_name}/graph", exist_ok=True)
-    os.makedirs(f"{args.model_weight_dir}/patient_specific/", exist_ok=True)
-    os.makedirs(f"{args.result_dir}/patient_specific/{args.wandb_name}/train_results", exist_ok=True)
+    args.result_dir = f"results/{args.model_type}/{args.wandb_name}"
+    os.makedirs(f"{args.result_dir}/visualization", exist_ok=True)
+    os.makedirs(f"{args.result_dir}/graph", exist_ok=True)
+    os.makedirs(f"{args.result_dir}/train_results", exist_ok=True)
+
+    args.vis_dir = f"visualizations/{args.model_type}/{args.wandb_name}"
+    os.makedirs(args.vis_dir, exist_ok=True)
+
+    os.makedirs(f"{args.model_weight_dir}/{args.model_type}/", exist_ok=True)
 
     landmark_prediction_train(args)

@@ -14,7 +14,7 @@ from torch.utils.data import Dataset, DataLoader, random_split
 
 
 class SegmentationDataset(Dataset):
-    def __init__(self, data_dir, specimen_id='17-1882',image_resize=512, n_landmarks=100, dilation_iters=65, invisible_landmarks=True, data_type='train', task_type='easy'):
+    def __init__(self, data_dir, specimen_id='17-1882', image_resize=512, n_landmarks=14, dilation_iters=65, invisible_landmarks=True, data_type='train', task_type='easy', model_type='patient_specific'):
         self.data_dir = data_dir
         self.specimen_id = specimen_id
         self.image_resize = image_resize
@@ -24,8 +24,9 @@ class SegmentationDataset(Dataset):
         self.invisible_landmarks = invisible_landmarks
         self.data_type = data_type
         self.task_type = task_type
+        self.model_type = model_type
 
-        csv_path = f'{self.data_dir}/{self.specimen_id}/landmark_prediction_csv/{self.data_type}_label_{self.task_type}.csv'
+        csv_path = f'{self.data_dir}/{self.specimen_id}/landmark_prediction_csv/{self.model_type}/{self.data_type}_label_{self.task_type}.csv'
 
         with open(csv_path, 'r') as f:
             reader = csv.reader(f)
@@ -43,7 +44,7 @@ class SegmentationDataset(Dataset):
 
     def __getitem__(self, idx):
         specimen_id, image_name, landmarks = self.samples[idx]
-        image_path = f'{self.data_dir}/{specimen_id}/{self.task_type}_projection_images/{specimen_id}_{image_name}'
+        image_path = f'{self.data_dir}/{specimen_id}/drr_projections_{self.task_type}/{specimen_id}_{image_name}'
 
         # Load and convert image
         image = cv2.imread(image_path)
@@ -65,12 +66,12 @@ class SegmentationDataset(Dataset):
 
         # Create mask with binary dilation for each landmark
         H, W = image_transformed.shape[1:]
-        masks = np.zeros((1, H, W), dtype=np.uint8)
+        masks = np.zeros((self.n_landmarks, H, W), dtype=np.uint8)
 
         for k, (x, y) in enumerate(landmarks_transformed):
             x = int(round(x))
             y = int(round(y))
-
+            
             if self.invisible_landmarks:
                 # if the landmarks are nan
                 if landmarks[k][0] == -1 or landmarks[k][1] == -1:
@@ -148,10 +149,10 @@ def preprocessing(args):
     val_df = output_df.iloc[train_end:val_end]
     test_df = output_df.iloc[val_end:]
 
-    os.makedirs(f'{args.data_dir}/{args.specimen_id}/landmark_prediction_csv', exist_ok=True)
-    train_df.to_csv(f'{args.data_dir}/{args.specimen_id}/landmark_prediction_csv/train_label_{args.task_type}.csv', index=False)
-    val_df.to_csv(f'{args.data_dir}/{args.specimen_id}/landmark_prediction_csv/val_label_{args.task_type}.csv', index=False)
-    test_df.to_csv(f'{args.data_dir}/{args.specimen_id}/landmark_prediction_csv/test_label_{args.task_type}.csv', index=False)
+    os.makedirs(f'{args.data_dir}/{args.specimen_id}/landmark_prediction_csv/{args.model_type}', exist_ok=True)
+    train_df.to_csv(f'{args.data_dir}/{args.specimen_id}/landmark_prediction_csv/{args.model_type}/train_label_{args.task_type}.csv', index=False)
+    val_df.to_csv(f'{args.data_dir}/{args.specimen_id}/landmark_prediction_csv/{args.model_type}/val_label_{args.task_type}.csv', index=False)
+    test_df.to_csv(f'{args.data_dir}/{args.specimen_id}/landmark_prediction_csv/{args.model_type}/test_label_{args.task_type}.csv', index=False)
 
     print(f"Preprocessed {args.specimen_id}, total {n} images → train: {len(train_df)}, val: {len(val_df)}, test: {len(test_df)}")
 
@@ -170,6 +171,7 @@ def dataloader(args, data_type='train', epoch=0):
             invisible_landmarks=args.invisible_landmarks,
             data_type="val",
             task_type=args.task_type,
+            model_type=args.model_type,
         )
 
         train_dataset = SegmentationDataset(
@@ -181,6 +183,7 @@ def dataloader(args, data_type='train', epoch=0):
             invisible_landmarks=args.invisible_landmarks,
             data_type="train",
             task_type=args.task_type,
+            model_type=args.model_type,
         )
 
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
@@ -201,6 +204,7 @@ def dataloader(args, data_type='train', epoch=0):
             invisible_landmarks=args.invisible_landmarks,
             data_type="test",
             task_type=args.task_type,
+            model_type=args.model_type,
         )
 
         test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
