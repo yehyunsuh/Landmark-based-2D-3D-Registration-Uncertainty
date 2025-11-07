@@ -5,11 +5,11 @@ import os
 import torch
 import argparse
 
-from src.utils import set_seed, str2bool, arg_as_list
+from src.train.utils import set_seed, str2bool, arg_as_list
+from src.train.model import UNet
 
-from src.model.log import initiate_wandb
-from src.model.model import UNet
-from src.model.train import train
+from src.train_patient_specific.log import initiate_wandb
+from src.train_patient_specific.train import train
 
 
 def landmark_prediction_train(args):
@@ -29,6 +29,7 @@ if __name__ == "__main__":
 
     # Reproducibility
     parser.add_argument("--seed", type=int, default=42, help="Seed for reproducibility")
+    parser.add_argument("--specimen_id", type=str, default="17-1882", help="Specimen ID for patient-specific training")
 
     # Data paths
     parser.add_argument("--data_dir", type=str, default="data/DeepFluoro", help="Directory containing training images")
@@ -38,8 +39,7 @@ if __name__ == "__main__":
 
     # Image/label settings
     parser.add_argument("--image_resize", type=int, default=512, help="Target image size after resizing (must be divisible by 32)")
-    parser.add_argument("--n_landmarks", type=int, default=100, help="Number of landmarks in total")
-    parser.add_argument("--landmark_to_predict", type=int, default=0, help="Landmark index to predict")
+    parser.add_argument("--n_landmarks", type=int, default=14, help="Number of landmarks in total")
     parser.add_argument("--invisible_landmarks", type=str2bool, default=True, choices=[True, False], help="Whether there are invisible landmarks in the dataset")
 
     # Model parameters
@@ -55,12 +55,12 @@ if __name__ == "__main__":
     parser.add_argument("--erosion_iters", type=int, default=10, help="Number of iterations for binary erosion")
 
     # Visualization options
-    parser.add_argument("--vis_dir", type=str, default="visualization_tmp", help="Directory to save visualization results")
-    parser.add_argument("--result_dir", type=str, default="result_tmp", help="Directory to save training results")
+    parser.add_argument("--vis_dir", type=str, default="visualizations", help="Directory to save visualization results")
+    parser.add_argument("--result_dir", type=str, default="results", help="Directory to save training results")
 
     # Wandb parameters
     parser.add_argument("--wandb", action="store_true", help="Enable Weights & Biases logging")
-    parser.add_argument("--wandb_project", type=str, default="Landmark based Registration with Uncertainty", help="Weights & Biases project name")
+    parser.add_argument("--wandb_project", type=str, default="Landmark Detection Patient-Specific", help="Weights & Biases project name")
     parser.add_argument("--wandb_entity", type=str, default="your_entity", help="Weights & Biases entity name")
     parser.add_argument("--wandb_name", type=str, default="baseline", help="Weights & Biases run name")
 
@@ -70,9 +70,9 @@ if __name__ == "__main__":
     set_seed(args.seed)
 
     # Create necessary directories
-    os.makedirs(f"{args.result_dir}/{args.wandb_name}/visualization", exist_ok=True)
-    os.makedirs(f"{args.result_dir}/{args.wandb_name}/graph", exist_ok=True)
-    os.makedirs(f"{args.model_weight_dir}", exist_ok=True)
-    os.makedirs(f"{args.result_dir}/{args.wandb_name}/train_results", exist_ok=True)
+    os.makedirs(f"{args.result_dir}/patient_specific/{args.wandb_name}/visualization", exist_ok=True)
+    os.makedirs(f"{args.result_dir}/patient_specific/{args.wandb_name}/graph", exist_ok=True)
+    os.makedirs(f"{args.model_weight_dir}/patient_specific/", exist_ok=True)
+    os.makedirs(f"{args.result_dir}/patient_specific/{args.wandb_name}/train_results", exist_ok=True)
 
     landmark_prediction_train(args)

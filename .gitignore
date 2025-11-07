@@ -12,6 +12,10 @@ log
 wandb
 *.out
 
+# Results
+visualizations
+results
+
 # Temporary
 *tmp*
 .DS_Store

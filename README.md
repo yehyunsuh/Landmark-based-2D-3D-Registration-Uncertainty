@@ -5,7 +5,7 @@
 conda create -n landmark python=3.10 -y
 conda activate landmark
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-pip3 install opencv-python h5py numpy nibabel tqdm scipy diffdrr 
+pip3 install opencv-python h5py numpy nibabel tqdm scipy diffdrr albumentations wandb segmentation_models_pytorch 
 ```
 
 - Data Setup

@@ -4,8 +4,8 @@ import pandas as pd
 
 from tqdm import tqdm
 
-from src.model.data_loader import dataloader
-from src.model.visualization import (
+from src.train_patient_specific.data_loader import dataloader
+from src.train.visualization import (
     overlay_gt_masks, overlay_pred_masks, overlay_pred_coords,
     create_gif, plot_training_results
 )

@@ -7,9 +7,9 @@ import torch.optim as optim
 from tqdm import tqdm
 from glob import glob
 
-from src.model.data_loader import dataloader
-from src.model.log import log_results
-from src.model.visualization import (
+from src.train_patient_specific.data_loader import dataloader
+from src.train_patient_specific.log import log_results
+from src.train.visualization import (
     overlay_gt_masks, overlay_pred_masks, overlay_pred_coords,
     create_gif, plot_training_results
 )
@@ -236,5 +236,5 @@ def train(args, model, device):
     columns += ["best_val_loss", "best_mean_error"]
 
     df = pd.DataFrame(rows, columns=columns)
-    df.to_csv(f"result_tmp/{args.wandb_name}/train_results/training_log.csv", index=False)
+    df.to_csv(f"{args.result_dir}/{args.wandb_name}/train_results/training_log.csv", index=False)
     print(f"📄 Saved training log to {args.wandb_name}/train_results/training_log.csv")
