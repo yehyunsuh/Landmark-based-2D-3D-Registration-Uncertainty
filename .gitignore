@@ -19,7 +19,7 @@ results
 # Temporary
 *tmp*
 .DS_Store
-scripts
+# scripts
 
 # Cache
 __pycache__/
