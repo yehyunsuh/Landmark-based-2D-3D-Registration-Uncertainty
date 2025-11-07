@@ -9,7 +9,7 @@ import nibabel as nib
 from glob import glob
 from tqdm import tqdm
 
-from src.utils import set_seed
+from src.train.utils import set_seed
 
 from diffdrr.drr import DRR
 from diffdrr.data import read
@@ -199,7 +199,7 @@ def project(args, device='cuda'):
         total_landmark_2D_array_transposed = total_landmark_2D_array.transpose(1, 0, 2)
 
         image_path_list = sorted(glob(f"{specimen_path}/{args.drr_dir}_{args.task_type}/{specimen_id}_*.png"))[:10]
-        os.makedirs(f'visualization_tmp/overlay/{specimen_id}', exist_ok=True)
+        os.makedirs(f'visualizations/overlay/{args.task_type}/{specimen_id}', exist_ok=True)
         for i, image_path in tqdm(enumerate(image_path_list), desc="Overlaying Landmarks"):
             image = cv2.imread(image_path)
             landmarks = total_landmark_2D_array_transposed[i]
@@ -207,7 +207,7 @@ def project(args, device='cuda'):
                 if np.isnan(avg_x) or np.isnan(avg_y):
                     continue  # Skip NaN values
                 cv2.circle(image, (int(avg_x), int(avg_y)), radius=5, color=(0, 255, 0), thickness=-1)
-            cv2.imwrite(f'visualization_tmp/overlay/{specimen_id}/{specimen_id}_{i:04d}.png', image)
+            cv2.imwrite(f'visualizations/overlay/{args.task_type}/{specimen_id}/{specimen_id}_{i:04d}.png', image)
 
         # Save the 2D landmark coordinates to CSV files
         for image_idx in range(total_landmark_2D_array_transposed.shape[0]):
