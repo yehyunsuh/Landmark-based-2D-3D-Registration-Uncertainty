@@ -1,6 +1,7 @@
 import os
 import re
 import cv2
+import csv
 import torch
 import argparse
 import numpy as np
@@ -117,6 +118,29 @@ def project(args, device='cuda'):
         translations_list[0] = manual_translations_list[0]
 
         print(f"Generated {n_rot_only} rot-only, {n_trans_only} trans-only, {n_both} both (total {sample_size}) samples.")
+
+        pose_records = []
+        for i in range(sample_size):
+            rx, ry, rz = rotations_list[i].to(device)
+            tx, ty, tz = translations_list[i].to(device)
+            
+            image_name = f'{specimen_id}_{i:04d}.png'
+            pose_records.append([
+                specimen_id, image_name, args.task_type,
+                rx.item(), ry.item(), rz.item(),
+                tx.item(), ty.item(), tz.item()
+            ])
+        
+        # Save pose records to CSV
+        pose_csv_path = f'{specimen_path}/drr_projections_csv_params_{args.task_type}.csv'
+        with open(pose_csv_path, 'w', newline='') as csvfile:
+            csvwriter = csv.writer(csvfile)
+            csvwriter.writerow([
+                'specimen_id', 'image_name', 'task_type',
+                'rx', 'ry', 'rz',
+                'tx', 'ty', 'tz'
+            ])
+            csvwriter.writerows(pose_records)
         
         for i in tqdm(range(sample_size), desc="Generating DRRs"):
             ct_volume = read(
