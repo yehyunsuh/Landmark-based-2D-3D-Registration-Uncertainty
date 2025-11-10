@@ -81,11 +81,14 @@ def process_patient_group(patient_id, group, output_path, sphere_radius=3):
         lm_vol = np.zeros_like(vol_pix, dtype=np.uint16)
         inv_affine = np.linalg.inv(affine)
 
+        repositioned_landmarks = []
         for idx, pt in enumerate(landmark_coords, start=1):
             pt_h = np.append(pt, 1)
             voxel = inv_affine @ pt_h
             voxel = np.round(voxel[:3]).astype(int)
             x, y, z = voxel
+            repositioned_landmarks.append([x, y, z])
+            
             label_value = idx
 
             # Draw labeled sphere (and store for single files)
@@ -111,6 +114,19 @@ def process_patient_group(patient_id, group, output_path, sphere_radius=3):
         lm_path = os.path.join(output_path, f"{patient_id}_Landmarks_3D.nii.gz")
         nib.save(nib.Nifti1Image(lm_vol, affine), lm_path)
         print(f"✅ Saved Combined Landmark Volume: {lm_path}")
+
+        # --- Save repositioned landmarks as npy ---
+        repositioned_landmarks = np.array(repositioned_landmarks)
+        npy_path = os.path.join(output_path, f"{patient_id}_Landmarks_3D.npy")
+        np.save(npy_path, repositioned_landmarks)
+        print(f"✅ Saved Repositioned Landmarks: {npy_path}")
+
+        # --- Save repositioned landmarks as json ---
+        repositioned_dict = {name: repositioned_landmarks[idx].tolist() for idx, name in enumerate(landmark_names)}
+        json_path = os.path.join(output_path, f"{patient_id}_Landmarks_3D.json")
+        with open(json_path, "w") as f_json:
+            json.dump(repositioned_dict, f_json, indent=2)
+        print(f"✅ Saved Repositioned Landmarks JSON: {json_path}")
 
         # --- Save label index-name mapping ---
         name_map_path = os.path.join(output_path, f"{patient_id}_Landmarks_3D.txt")
