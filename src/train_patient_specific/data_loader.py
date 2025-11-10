@@ -14,7 +14,7 @@ from torch.utils.data import Dataset, DataLoader, random_split
 
 
 class SegmentationDataset(Dataset):
-    def __init__(self, data_dir, specimen_id='17-1882', image_resize=512, n_landmarks=14, dilation_iters=65, invisible_landmarks=True, data_type='train', task_type='easy', model_type='patient_specific'):
+    def __init__(self, data_dir, specimen_id='17-1882', image_resize=512, n_landmarks=14, dilation_iters=65, invisible_landmarks=True, data_type='train', task_type='easy', model_type='patient_specific', seed=42):
         self.data_dir = data_dir
         self.specimen_id = specimen_id
         self.image_resize = image_resize
@@ -25,6 +25,7 @@ class SegmentationDataset(Dataset):
         self.data_type = data_type
         self.task_type = task_type
         self.model_type = model_type
+        self.seed = seed
 
         csv_path = f'{self.data_dir}/{self.specimen_id}/landmark_prediction_csv/{self.model_type}/{self.data_type}_label_{self.task_type}.csv'
 
@@ -52,15 +53,17 @@ class SegmentationDataset(Dataset):
 
         # Apply resizing and normalization
         transform = A.Compose([
-            A.Resize(self.image_resize, self.image_resize),
-            A.Normalize(
-                mean=(0.485, 0.456, 0.406),
-                std=(0.229, 0.224, 0.225),
-            ),
-            A.InvertImg(p=1), 
-            A.VerticalFlip(p=0.3),
-            ToTensorV2()
-        ], keypoint_params=A.KeypointParams(format='xy', remove_invisible=False))
+                A.Resize(self.image_resize, self.image_resize),
+                A.Normalize(
+                    mean=(0.485, 0.456, 0.406),
+                    std=(0.229, 0.224, 0.225),
+                ),
+                A.InvertImg(p=1), 
+                A.VerticalFlip(p=0.3),
+                ToTensorV2()], 
+            keypoint_params=A.KeypointParams(format='xy', remove_invisible=False),
+            seed=self.seed
+        )
 
         transformed = transform(image=image, keypoints=landmarks)
         image_transformed = transformed['image']  # Tensor: [3, H, W]
@@ -174,6 +177,7 @@ def dataloader(args, data_type='train', epoch=0):
             data_type="val",
             task_type=args.task_type,
             model_type=args.model_type,
+            seed=args.seed,
         )
 
         train_dataset = SegmentationDataset(
@@ -186,6 +190,7 @@ def dataloader(args, data_type='train', epoch=0):
             data_type="train",
             task_type=args.task_type,
             model_type=args.model_type,
+            seed=args.seed,
         )
 
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
@@ -207,6 +212,7 @@ def dataloader(args, data_type='train', epoch=0):
             data_type="test",
             task_type=args.task_type,
             model_type=args.model_type,
+            seed=args.seed,
         )
 
         test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
