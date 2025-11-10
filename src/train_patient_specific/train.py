@@ -31,8 +31,6 @@ def train_model(model, device, train_loader, optimizer, loss_fn):
 
     mean_loss = total_loss / len(train_loader)
 
-    print(f"Batch {batch_idx}/{len(train_loader)}: Loss: {mean_loss:.4f}")
-
     return mean_loss
 
 

@@ -57,6 +57,8 @@ class SegmentationDataset(Dataset):
                 mean=(0.485, 0.456, 0.406),
                 std=(0.229, 0.224, 0.225),
             ),
+            A.InvertImg(p=1), 
+            A.VerticalFlip(p=0.3),
             ToTensorV2()
         ], keypoint_params=A.KeypointParams(format='xy', remove_invisible=False))
 
