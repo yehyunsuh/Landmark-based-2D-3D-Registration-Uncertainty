@@ -41,6 +41,7 @@ def project(args, device='cuda'):
         print(f"Processing specimen: {specimen_path}")
         os.makedirs(f'{specimen_path}/{args.drr_dir}_{args.task_type}', exist_ok=True)
         os.makedirs(f'{specimen_path}/{args.drr_csv_dir}_{args.task_type}', exist_ok=True)
+        os.makedirs(f'{specimen_path}/{args.drr_params_csv_dir}', exist_ok=True)
 
         specimen_id = os.path.basename(specimen_path)
         specimen_volume_path = os.path.join(specimen_path, f"{specimen_id}_CT.nii.gz")
@@ -116,7 +117,6 @@ def project(args, device='cuda'):
         # --- Ensure the first sample is always the manual pose ---
         rotations_list[0] = manual_rotations_list[0]
         translations_list[0] = manual_translations_list[0]
-
         print(f"Generated {n_rot_only} rot-only, {n_trans_only} trans-only, {n_both} both (total {sample_size}) samples.")
 
         pose_records = []
@@ -132,7 +132,7 @@ def project(args, device='cuda'):
             ])
         
         # Save pose records to CSV
-        pose_csv_path = f'{specimen_path}/drr_projections_csv_params_{args.task_type}.csv'
+        pose_csv_path = f'{specimen_path}/{args.drr_params_csv_dir}/{specimen_id}_pose_params_{args.task_type}.csv'
         with open(pose_csv_path, 'w', newline='') as csvfile:
             csvwriter = csv.writer(csvfile)
             csvwriter.writerow([
@@ -279,6 +279,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--drr_dir', type=str, default='drr_projections', help='Directory name to save the DRR projections')
     parser.add_argument('--drr_csv_dir', type=str, default='drr_projections_csv', help='Directory name to save the DRR projections CSV files')
+    parser.add_argument('--drr_params_csv_dir', type=str, default='drr_projections_csv_params', help='Directory name to save the DRR projections parameters CSV file')
 
     args = parser.parse_args()
     
