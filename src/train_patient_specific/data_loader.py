@@ -95,7 +95,25 @@ class SegmentationDataset(Dataset):
             return image_transformed, mask, image_name, landmarks_transformed
         
         elif self.data_type == 'test':
-            return image_transformed, image_name, landmarks_transformed
+            current_image_name = f'{specimen_id}_{image_name}'
+
+            pose_param_csv_path = f'{self.data_dir}/{self.specimen_id}/drr_projections_csv_params/{self.specimen_id}_pose_params_{self.task_type}.csv'
+            pose_params = []
+            with open(pose_param_csv_path, 'r') as f:
+                reader = csv.reader(f)
+                header = next(reader)  # Skip header
+                for row in reader:
+                    params_specimen_id = row[0]
+                    params_image_name = row[1]
+                    
+                    if current_image_name == params_image_name:
+                        params_task_type = row[2]
+                        rotation_params = list(map(float, row[3:6]))  # rx, ry, rz
+                        translation_params = list(map(float, row[6:9]))  # tx, ty, tz
+                        pose_params = rotation_params + translation_params
+                        break
+
+            return image_transformed, self.specimen_id, image_name, landmarks_transformed, pose_params
     
 
 def preprocessing(args):
