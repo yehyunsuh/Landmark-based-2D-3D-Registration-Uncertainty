@@ -82,7 +82,7 @@ def project(args, device='cuda'):
         n_trans_only = int(sample_size // 3)  # 200
         n_both = sample_size - n_rot_only - n_trans_only  # 200
 
-        # --- Initialize zero arrays for all 500 ---
+        # --- Initialize zero arrays for all sample_size ---
         rotations_all = np.zeros((sample_size, 3), dtype=np.float32)
         translations_all = np.zeros((sample_size, 3), dtype=np.float32)
 
