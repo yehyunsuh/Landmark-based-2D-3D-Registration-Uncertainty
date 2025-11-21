@@ -80,7 +80,7 @@ def overlay_pred_masks(args, images, outputs, pred_coords, gt_coords, epoch, tot
     return overlay_list
 
 
-def overlay_pred_coords(args, images, pred_coords, gt_coords, epoch, total_epoch, idx):
+def overlay_pred_coords(args, images, pred_coords, gt_coords, epoch, total_epoch, idx, train_mode=False, test_mode=False):
     for b in range(images.shape[0]):
         pred = pred_coords[b].cpu().numpy()
         gt = gt_coords[b].cpu().numpy()
@@ -98,12 +98,15 @@ def overlay_pred_coords(args, images, pred_coords, gt_coords, epoch, total_epoch
             cv2.circle(img, (gx, gy), 4, (255, 0, 0), -1)
             cv2.circle(img, (px, py), 4, (0, 0, 255), -1)
 
-        if epoch % 10 == 0 or epoch == total_epoch - 1:
-            os.makedirs(f"{args.vis_dir}/Epoch{epoch}", exist_ok=True)
-            cv2.imwrite(
-                f"{args.vis_dir}/Epoch{epoch}/Epoch{epoch}_Batch{idx}_overlay_pred.png", img
-            )
-        cv2.imwrite(f"{args.vis_dir}/Batch{idx}_overlay_pred.png", img)
+        if train_mode:
+            if epoch % 10 == 0 or epoch == total_epoch - 1:
+                os.makedirs(f"{args.vis_dir}/Epoch{epoch}", exist_ok=True)
+                cv2.imwrite(
+                    f"{args.vis_dir}/Epoch{epoch}/Epoch{epoch}_Batch{idx}_overlay_pred.png", img
+                )
+            cv2.imwrite(f"{args.vis_dir}/Batch{idx}_overlay_pred.png", img)
+        if test_mode:
+            cv2.imwrite(f"{args.vis_dir}/Test_Batch{idx}_overlay_pred.png", img)
 
         return img
 

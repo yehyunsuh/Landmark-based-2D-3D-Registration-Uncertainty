@@ -5,7 +5,7 @@
 conda create -n landmark python=3.10 -y
 conda activate landmark
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-pip3 install opencv-python h5py numpy nibabel tqdm scipy diffdrr albumentations wandb segmentation_models_pytorch 
+pip3 install opencv-python h5py numpy nibabel tqdm scipy diffdrr albumentations wandb segmentation_models_pytorch scikit-learn
 ```
 
 - Data Setup
@@ -19,3 +19,4 @@ CUDA_VISIBLE_DEVICES=0 python3 -m src.data.2_project --task_type hard
 ```
 
 - Training Landmark Prediction Model
+Note that even though codes are available online and you can follow all the instructions which was the exact same code I use to obtain the results in the paper, due to the randomness in the augmentation process, the numbers in the final results might differ.

@@ -52,18 +52,29 @@ class SegmentationDataset(Dataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         # Apply resizing and normalization
-        transform = A.Compose([
-                A.Resize(self.image_resize, self.image_resize),
-                A.Normalize(
-                    mean=(0.485, 0.456, 0.406),
-                    std=(0.229, 0.224, 0.225),
-                ),
-                A.InvertImg(p=1), 
-                A.VerticalFlip(p=0.3),
-                ToTensorV2()], 
-            keypoint_params=A.KeypointParams(format='xy', remove_invisible=False),
-            seed=self.seed
-        )
+        if self.data_type == 'train' or self.data_type == 'val':
+            transform = A.Compose([
+                    A.Resize(self.image_resize, self.image_resize),
+                    A.Normalize(
+                        mean=(0.485, 0.456, 0.406),
+                        std=(0.229, 0.224, 0.225),
+                    ),
+                    A.InvertImg(p=1), 
+                    A.VerticalFlip(p=0.3),
+                    ToTensorV2()], 
+                keypoint_params=A.KeypointParams(format='xy', remove_invisible=False),
+            )
+        else:
+            transform = A.Compose([
+                    A.Resize(self.image_resize, self.image_resize),
+                    A.Normalize(
+                        mean=(0.485, 0.456, 0.406),
+                        std=(0.229, 0.224, 0.225),
+                    ),
+                    A.InvertImg(p=1), 
+                    ToTensorV2()], 
+                keypoint_params=A.KeypointParams(format='xy', remove_invisible=False),
+            )
 
         transformed = transform(image=image, keypoints=landmarks)
         image_transformed = transformed['image']  # Tensor: [3, H, W]
@@ -94,7 +105,7 @@ class SegmentationDataset(Dataset):
             mask = torch.from_numpy(masks).float()  # Shape: [n_landmarks, H, W]
             return image_transformed, mask, image_name, landmarks_transformed
         
-        elif self.data_type == 'test':
+        if self.data_type == 'test':
             current_image_name = f'{specimen_id}_{image_name}'
 
             pose_param_csv_path = f'{self.data_dir}/{self.specimen_id}/drr_projections_csv_params/{self.specimen_id}_pose_params_{self.task_type}.csv'

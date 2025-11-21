@@ -10,6 +10,7 @@ from src.train.model import UNet
 
 from src.train_patient_specific.log import initiate_wandb
 from src.train_patient_specific.train import train
+from src.train_patient_specific.test import test
 
 
 def landmark_prediction_train(args):
@@ -21,8 +22,17 @@ def landmark_prediction_train(args):
 
     model = UNet(args, device)
 
-    train(args, model, device)
-
+    if args.train_mode:
+        model = train(args, model, device)
+    if args.test_mode:
+        if not args.train_mode:
+            weight_path = f"{args.model_weight_dir}/{args.model_type}/{args.wandb_name}_dist.pth"
+            # weight_path = f"{args.model_weight_dir}/{args.model_type}/{args.wandb_name}_loss.pth"
+            model.load_state_dict(torch.load(weight_path, map_location=device))
+        test(args, model, device)
+    if not args.train_mode and not args.test_mode:
+        print("Please specify at least one of --train_mode or --test_mode flags.")
+    
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Training script for anatomical landmark detection with U-Net.")
@@ -31,6 +41,8 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=42, help="Seed for reproducibility")
     parser.add_argument("--specimen_id", type=str, default="17-1882", help="Specimen ID for patient-specific training")
     parser.add_argument("--model_type", type=str, default="patient_specific", help="Type of model")
+    parser.add_argument("--train_mode", action="store_true", help="Run in training mode")
+    parser.add_argument("--test_mode", action="store_true", help="Run in test mode")
 
     # Data paths
     parser.add_argument("--data_dir", type=str, default="data/DeepFluoro", help="Directory containing training images")
