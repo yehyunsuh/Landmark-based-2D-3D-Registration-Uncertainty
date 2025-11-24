@@ -1,89 +1,88 @@
 import os
 import torch
+import argparse
+import numpy as np
 import pandas as pd
+import nibabel as nib
+import torch.nn as nn
 
 from tqdm import tqdm
 
+
+from src.train.utils import set_seed, str2bool, arg_as_list
 from src.train_patient_held_out.data_loader import dataloader
-from src.train.visualization import (
-    overlay_gt_masks, overlay_pred_masks, overlay_pred_coords,
-    create_gif, plot_training_results
-)
+
+from src.test.model import UNet_with_dropout
+from src.test.data import load_or_compute_per_image_uncertainty, save_mc_predictions_csv
+from src.test.uncertainty import uncertainty_evaluation
+from src.test.result import save_csv
+from src.test.visualization import plot_overall_trends
+
 
 def test_model(args, model, device, test_loader):
     model.eval()
-    all_pred_coords = []
+    for m in model.modules():
+        if isinstance(m, nn.Dropout) or isinstance(m, nn.Dropout2d):
+            m.train()
+
+    all_sim_coords = []
     all_gt_coords = []
+    all_image_names = []
 
-    with torch.no_grad():
-        for idx, (images, _, landmarks) in enumerate(tqdm(test_loader, desc="Testing")):
-            images = images.to(device)
-            outputs = model(images)
+    for idx, (image, specimen_id, image_name, landmarks, pose_params) in enumerate(tqdm(test_loader, desc="Testing")):
+        image = image.to(device)
+        landmarks = landmarks.to(device)
+        if landmarks.ndim == 2: 
+            landmarks = landmarks.unsqueeze(0)
 
+        # create mask for invisible landmarks
+        zero_mask = (landmarks == 0).all(dim=2)
+        landmarks[zero_mask] = float('nan')
+
+        all_gt_coords.append(landmarks)
+
+        B, C = 1, args.n_landmarks  # test loader likely yields B=1
+        sim_coords_batch = []
+
+        for _ in range(args.n_simulations):
+            outputs = model(image)
             probs = torch.sigmoid(outputs)
-            B, C, H, W = probs.shape
-            probs_flat = probs.view(B, C, -1)
-            max_indices = probs_flat.argmax(dim=2)
+            _, _, H, W = probs.shape
 
-            pred_coords = torch.zeros((B, C, 2), device=device)
-            for b in range(B):
-                for c in range(C):
-                    index = max_indices[b, c].item()
-                    y, x = divmod(index, W)
-                    pred_coords[b, c] = torch.tensor([x, y], device=device)
+            flat = probs.view(B, C, -1)
+            max_idx = flat.argmax(dim=2)
 
-            gt_coords = torch.tensor(landmarks, dtype=torch.float32, device=device)
-            if gt_coords.ndim == 2:
-                gt_coords = gt_coords.unsqueeze(0)
+            preds = torch.zeros((B,C,2), device=device)
+            for c in range(C):
+                idx1d = max_idx[0,c].item()
+                y, x = divmod(idx1d, W)
+                preds[0,c] = torch.tensor([x,y], device=device)
+            sim_coords_batch.append(preds.clone())
 
-            all_pred_coords.append(pred_coords)
-            all_gt_coords.append(gt_coords)
+        sim_coords_batch = torch.stack(sim_coords_batch)
+        all_sim_coords.append(sim_coords_batch)
+        all_image_names.append(image_name[0])
 
-    all_pred_coords = torch.cat(all_pred_coords, dim=0)  # [N, C, 2]
+    all_sim_coords = torch.cat(all_sim_coords, dim=1)
     all_gt_coords = torch.cat(all_gt_coords, dim=0)
 
-    # Mask (0, 0) GT for distance calculation only
-    diff = all_pred_coords - all_gt_coords
-    dists = torch.norm(diff, dim=2)
-    mask = (all_gt_coords != 0).any(dim=2)  # [B, C]
-    dists[~mask] = float("nan")  # Don't include in distance average
-
-    return dists
+    return all_sim_coords, all_gt_coords, all_image_names
 
 
-def test(args, model, device):
-    history = {
-        "mean_landmark_error": [],
-        "landmark_errors": {str(c): [] for c in range(args.n_landmarks)},
-    }
+def test(args, model, model_dropout, device):
+    csv_dir = os.path.join(args.vis_dir, f"prediction_{args.dropout_rate}", "csv_results")
+    plot_dir = os.path.join(args.vis_dir, f"prediction_{args.dropout_rate}", "uncertainty_plots")
+    os.makedirs(csv_dir, exist_ok=True)
+    os.makedirs(plot_dir, exist_ok=True)
 
     test_loader = dataloader(args, data_type='test')
+    if args.test_prediction:
+        mc_preds, gt_coords, image_names = test_model(args, model_dropout, device, test_loader)
+        save_mc_predictions_csv(args, mc_preds, gt_coords, image_names, csv_dir)
 
-    dists = test_model(args, model, device, test_loader)
+    df_unc, cluster_pivot = load_or_compute_per_image_uncertainty(csv_dir, dropout_rate=args.dropout_rate)
 
-    mean_dist = torch.nanmean(dists).item()
-
-    print(
-        f"Mean Dist: {mean_dist:.4f} | "
-    )
-
-    history["mean_landmark_error"].append(mean_dist)
-
-    for c in range(dists.shape[1]):
-        history["landmark_errors"][str(c)].append(torch.nanmean(dists[:, c]).item())
-
-    rows = []
-    row = [
-        history["mean_landmark_error"][-1],
-    ]
-    row += [history["landmark_errors"][str(c)][-1] for c in range(args.n_landmarks)]
-    rows.append(row)
-
-    columns = ["mean_dist"]
-    columns += [f"landmark{c+1}_dist" for c in range(args.n_landmarks)] 
-
-    df = pd.DataFrame(rows, columns=columns)
-
-    os.makedirs(f'{args.result_dir}/{args.wandb_name}/test_results', exist_ok=True)
-    df.to_csv(f"{args.result_dir}/{args.wandb_name}/test_results/test_results.csv", index=False)
-    print(f"📄 Saved test results to {args.result_dir}/{args.wandb_name}/test_results/test_results.csv")
+    suffix = f"perImage_{args.visibility_mode}"
+    all_results = uncertainty_evaluation(args, model, test_loader, device, cluster_pivot)
+    results_df = save_csv(args, all_results, suffix=suffix)
+    plot_overall_trends(args, results_df, plot_dir, suffix=suffix)

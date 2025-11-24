@@ -3,8 +3,7 @@ import numpy as np
 from scipy.optimize import least_squares
 
 
-# -ry, rz, rx, tx, -ty, -tz
-def residuals(params, L_Real, L_Proj, sdd, svd, vdd):
+def residuals(params, L_Real, L_Proj, sdd, svd, vdd, manual_translation_x, manual_translation_y, manual_translation_z):
     rx, ry, rz, tx, ty, tz = params
 
     # Convert angles from degrees to radians
@@ -30,20 +29,24 @@ def residuals(params, L_Real, L_Proj, sdd, svd, vdd):
     ])
     rot = Ry @ Rx @ Rz
 
-    shifted = L_Real - np.array([0, vdd, 0])
+    # print("\nL_REAL: ", L_Real[:5])
+    shifted = L_Real - np.array([0, vdd, -manual_translation_z])
     rotated = shifted @ rot.T
-    transformed = rotated + np.array([0, vdd, 0]) + np.array([tx, -ty, -tz])
+    transformed = rotated + np.array([0, vdd, -manual_translation_z]) + np.array([tx, -ty, -tz])
 
     factor = sdd / (sdd - transformed[:, 1])
     L_Proj_pred = factor[:, None] * transformed[:, [0, 2]]
 
-    res = np.hstack([(L_Proj_pred[:, 0] - L_Proj[:, 0]), (L_Proj_pred[:,1] - L_Proj[:, 1])])
+    # print(f"\nL_Proj_pred: {L_Proj_pred[:5]}")
+    # print(f"\nL_Proj: {L_Proj[:5]}")
+    # exit()
 
+    res = np.hstack([(L_Proj_pred[:, 0] - L_Proj[:, 0]), (L_Proj_pred[:,1] - L_Proj[:, 1])])
     return res
 
 
-def pose_estimation(L_Real, L_Proj, sdd, svd, vdd):
-    # Initial guess
+def pose_estimation(L_Real, L_Proj, sdd, svd, vdd, manual_translations_list):
+    # === Initial guess ===
     x0 = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
     # Mask Out Nans in L_Proj
@@ -52,9 +55,27 @@ def pose_estimation(L_Real, L_Proj, sdd, svd, vdd):
     L_Real_valid = L_Real[valid_mask]
     L_Proj_valid = L_Proj[valid_mask]
 
-    # Call least_squares
+    # --- NEW: guard for too few points ---
+    if L_Real_valid.shape[0] < 3:
+        # Not enough constraints for 6-DOF pose using LM
+        # Return NaNs so caller can skip this case
+        return (
+            np.array([np.nan, np.nan, np.nan], dtype=float),
+            np.array([np.nan, np.nan, np.nan], dtype=float),
+        )
+
+    manual_translation_x = manual_translations_list[0, 0].item()
+    manual_translation_y = manual_translations_list[0, 1].item()
+    manual_translation_z = manual_translations_list[0, 2].item()
+
     result = least_squares(
-        residuals, x0, args=(L_Real_valid, L_Proj_valid, sdd, svd, vdd),
+        residuals, 
+        x0, 
+        args=(
+            L_Real_valid, L_Proj_valid, 
+            sdd, svd, vdd, 
+            manual_translation_x, manual_translation_y, manual_translation_z
+        ),
         method='lm',
         verbose=0,
     )

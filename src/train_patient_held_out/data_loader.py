@@ -76,18 +76,29 @@ class SegmentationDataset(Dataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         # Apply resizing and normalization
-        transform = A.Compose([
-                A.Resize(self.image_resize, self.image_resize),
-                A.Normalize(
-                    mean=(0.485, 0.456, 0.406),
-                    std=(0.229, 0.224, 0.225),
-                ),
-                A.InvertImg(p=1), 
-                A.VerticalFlip(p=0.3),
-                ToTensorV2()], 
-            keypoint_params=A.KeypointParams(format='xy', remove_invisible=False),
-        )
-
+        if self.data_type == 'train' or self.data_type == 'val':
+            transform = A.Compose([
+                    A.Resize(self.image_resize, self.image_resize),
+                    A.Normalize(
+                        mean=(0.485, 0.456, 0.406),
+                        std=(0.229, 0.224, 0.225),
+                    ),
+                    A.InvertImg(p=1), 
+                    A.VerticalFlip(p=0.3),
+                    ToTensorV2()], 
+                keypoint_params=A.KeypointParams(format='xy', remove_invisible=False),
+            )
+        else:
+            transform = A.Compose([
+                    A.Resize(self.image_resize, self.image_resize),
+                    A.Normalize(
+                        mean=(0.485, 0.456, 0.406),
+                        std=(0.229, 0.224, 0.225),
+                    ),
+                    A.InvertImg(p=1), 
+                    ToTensorV2()], 
+                keypoint_params=A.KeypointParams(format='xy', remove_invisible=False),
+            )
         transformed = transform(image=image, keypoints=landmarks)
         image_transformed = transformed['image']  # Tensor: [3, H, W]
         landmarks_transformed = transformed['keypoints']
@@ -99,7 +110,7 @@ class SegmentationDataset(Dataset):
         for k, (x, y) in enumerate(landmarks_transformed):
             x = int(round(x))
             y = int(round(y))
-
+            
             if self.invisible_landmarks:
                 # if the landmarks are nan
                 if landmarks[k][0] == -1 or landmarks[k][1] == -1:

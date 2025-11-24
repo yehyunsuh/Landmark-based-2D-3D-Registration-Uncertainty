@@ -19,7 +19,8 @@ def train_model(model, device, train_loader, optimizer, loss_fn):
     model.train()
     total_loss = 0
 
-    for batch_idx, (images, masks, _, _) in enumerate(tqdm(train_loader, desc="Training")):
+    # for batch_idx, (images, masks, _, _) in enumerate(tqdm(train_loader, desc="Training")):
+    for batch_idx, (images, masks, _, _) in enumerate(train_loader):
         images, masks = images.to(device), masks.to(device)
 
         optimizer.zero_grad()
@@ -43,7 +44,8 @@ def evaluate_model(args, model, device, val_loader, epoch):
     gt_mask_w_coords_image, pred_mask_w_coords_image_list = None, []
 
     with torch.no_grad():
-        for idx, (images, masks, _, landmarks) in enumerate(tqdm(val_loader, desc="Validation")):
+        # for idx, (images, masks, _, landmarks) in enumerate(tqdm(val_loader, desc="Validation")):
+        for idx, (images, masks, _, landmarks) in enumerate(val_loader):
             images, masks = images.to(device), masks.to(device)
             outputs = model(images)
 
@@ -175,6 +177,7 @@ def train(args, model, device):
         mean_dist = torch.nanmean(dists).item()
 
         print(
+            f"Epoch {epoch + 1} | "
             f"Train Loss: {train_loss:.4f} | "
             f"Val Loss: {val_loss:.4f} | "
             f"Mean Dist: {mean_dist:.4f} | "
