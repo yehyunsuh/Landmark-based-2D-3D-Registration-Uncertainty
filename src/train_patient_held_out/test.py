@@ -1,18 +1,11 @@
 import os
 import torch
-import argparse
-import numpy as np
-import pandas as pd
-import nibabel as nib
 import torch.nn as nn
 
 from tqdm import tqdm
 
-
-from src.train.utils import set_seed, str2bool, arg_as_list
 from src.train_patient_held_out.data_loader import dataloader
 
-from src.test.model import UNet_with_dropout
 from src.test.data import load_or_compute_per_image_uncertainty, save_mc_predictions_csv
 from src.test.uncertainty import uncertainty_evaluation
 from src.test.result import save_csv

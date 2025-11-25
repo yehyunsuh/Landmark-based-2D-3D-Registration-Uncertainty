@@ -4,7 +4,6 @@ import nibabel as nib
 
 from tqdm import tqdm
 
-from src.test.manual import manual_translation
 from src.test.perspective_projection import apply_transformation, project_point
 from src.test.pose_estimation import pose_estimation
 
@@ -43,7 +42,7 @@ def uncertainty_evaluation(args, model, test_loader, device, cluster_pivot):
             # =====================================================
             # Manual translation offsets
             # =====================================================
-            manual_translations_list = manual_translation(specimen_id, svd)
+            manual_translations_list = torch.tensor([[0.0, svd, 0.0]])
 
             # =====================================================
             # Forward pass: get prob maps, max prob + coords
@@ -185,12 +184,12 @@ def uncertainty_evaluation(args, model, test_loader, device, cluster_pivot):
             # All: base visible only
             pred_all = pred_coords_np.copy()
             pred_all[~base_mask] = np.nan
-            pred_err_all = round(np.sqrt(np.nanmean((pred_all - Point_2D_landmark_cv2) ** 2)),2)
+            pred_err_all = float(np.sqrt(np.nanmean((pred_all - Point_2D_landmark_cv2) ** 2)))
 
             # Filtered: base visible but drop top-k uncertain
             pred_filt = pred_coords_np.copy()
             pred_filt[~filtered_mask] = np.nan
-            pred_err_filtered = round(np.sqrt(np.nanmean((pred_filt - Point_2D_landmark_cv2) ** 2)),2)
+            pred_err_filtered = float(np.sqrt(np.nanmean((pred_filt - Point_2D_landmark_cv2) ** 2)))
 
             if abs(pred_err_filtered - pred_err_all) < eps_pred:
                 pred_better = "tie"
@@ -271,8 +270,10 @@ def uncertainty_evaluation(args, model, test_loader, device, cluster_pivot):
                 print(f"[Skipping] {image_name}: not enough valid landmarks for ALL pose (pred-based)")
                 continue
 
-            rot_err_all = np.linalg.norm(rot_all - rotation_gt)
-            trans_err_all = np.linalg.norm(trans_all - translation_gt_adj)
+            # rot_err_all = np.linalg.norm(rot_all - rotation_gt)
+            # trans_err_all = np.linalg.norm(trans_all - translation_gt_adj)
+            rot_err_all = float(np.sqrt(np.mean((rot_all - rotation_gt) ** 2)))
+            trans_err_all = float(np.sqrt(np.mean((trans_all - translation_gt_adj) ** 2)))
 
             # --- Filtered ---
             L_Proj_pred_filt = pred_filt.copy()
@@ -290,8 +291,10 @@ def uncertainty_evaluation(args, model, test_loader, device, cluster_pivot):
                 print(f"[Skipping] {image_name}: not enough valid landmarks for FILTERED pose (pred-based)")
                 continue
 
-            rot_err_filt = np.linalg.norm(rot_filt - rotation_gt)
-            trans_err_filt = np.linalg.norm(trans_filt - translation_gt_adj)
+            # rot_err_filt = np.linalg.norm(rot_filt - rotation_gt)
+            # trans_err_filt = np.linalg.norm(trans_filt - translation_gt_adj)
+            rot_err_filt = float(np.sqrt(np.mean((rot_filt - rotation_gt) ** 2)))
+            trans_err_filt = float(np.sqrt(np.mean((trans_filt - translation_gt_adj) ** 2)))
 
             # Compare
             if (abs(rot_err_filt - rot_err_all) < eps_rot and
