@@ -6,10 +6,10 @@ import pandas as pd
 from sklearn.cluster import KMeans
 
 
-def save_mc_predictions_csv(args, mc_preds, gt_coords, image_names, csv_dir):
+def save_predictions_csv(args, image_names, csv_dir, mc_preds, gt_coords, prefix="mc_predictions"):
     # print(count*args.n_simulations, "invisible landmarks in total")
 
-    mean_mc = torch.nanmean(mc_preds, dim=0)      # [N, C, 2]
+    mean_mc = torch.nanmean(mc_preds, dim=0)      # [N, C, 2]e
     diff = mean_mc - gt_coords                    # [N, C, 2]
     dist = torch.norm(diff, dim=2)                # [N, C]
 
@@ -30,20 +30,24 @@ def save_mc_predictions_csv(args, mc_preds, gt_coords, image_names, csv_dir):
         for s in range(S):          # simulation index
             for c in range(C):  # landmark index
                 x, y = mc_preds[s, i, c].tolist()
-                image_id = image_names[i]   
+                image_id = image_names[i]
                 mc_list.append([image_id, s, c, x, y])
 
     mc_df = pd.DataFrame(mc_list, columns=["image_id", "simulation", "landmark", "x", "y"])
-    mc_path = os.path.join(csv_dir, f"mc_predictions_{args.dropout_rate}.csv")
+    mc_path = os.path.join(csv_dir, f"{prefix}_{args.dropout_rate}.csv")  # <--- changed
+
     mc_df.to_csv(mc_path, index=False)
 
+    if prefix == "mc_predictions":
+        return
+    
     # Ground truth CSV: use gt_coords.shape[0] (N_gt), not S
     N_gt = gt_coords.shape[0]   # should be equal to N
     gt_list = []
     for i in range(N_gt):
         for c in range(C):
             x, y = gt_coords[i, c].tolist()
-            image_id = image_names[i]   
+            image_id = image_names[i]
             gt_list.append([image_id, c, x, y])
 
     gt_df = pd.DataFrame(gt_list, columns=["image_id", "landmark", "x", "y"])
