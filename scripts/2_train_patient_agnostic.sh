@@ -1,3 +1,0 @@
-CUDA_VISIBLE_DEVICES=1 python3 -m src.train_patient_agnostic.main --wandb --wandb_name easy --wandb_entity yehyun-suh --preprocess --task_type easy
-CUDA_VISIBLE_DEVICES=1 python3 -m src.train_patient_agnostic.main --wandb --wandb_name medium --wandb_entity yehyun-suh --preprocess --task_type medium
-CUDA_VISIBLE_DEVICES=1 python3 -m src.train_patient_agnostic.main --wandb --wandb_name hard --wandb_entity yehyun-suh --preprocess --task_type hard
