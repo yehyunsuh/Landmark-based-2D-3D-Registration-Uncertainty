@@ -52,7 +52,7 @@ def landmark_prediction_train(args):
         model_dropout.load_state_dict(state_dict)
         
         test(args, model, model_dropout, device)
-    if not args.train_mode and not args.test_mode:
+    if not args.train_mode and not args.finetune_mode and not args.test_mode:
         print("Please specify at least one of --train_mode or --test_mode flags.")
 
 

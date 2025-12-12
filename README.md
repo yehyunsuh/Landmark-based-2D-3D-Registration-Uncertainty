@@ -19,22 +19,41 @@ python3 -m src.data.2_project
 - Training Landmark Prediction Model  
 Note that even though codes are available online and you can follow all the instructions which was the exact same code I use to obtain the results in the paper, due to the randomness in the augmentation process, the numbers in the final results might differ.
 ```
-python3 -m src.train_patient_held_out.main --wandb --wandb_name 17-1882_hard --wandb_entity <your_wandb_entity> --specimen_id 17-1882 --preprocess --train_mode
-python3 -m src.train_patient_held_out.main --wandb --wandb_name 17-1905_hard --wandb_entity <your_wandb_entity> --specimen_id 17-1905 --preprocess --train_mode
-python3 -m src.train_patient_held_out.main --wandb --wandb_name 18-0725_hard --wandb_entity <your_wandb_entity> --specimen_id 18-0725 --preprocess --train_mode
-python3 -m src.train_patient_held_out.main --wandb --wandb_name 18-1109_hard --wandb_entity <your_wandb_entity> --specimen_id 18-1109 --preprocess --train_mode
-python3 -m src.train_patient_held_out.main --wandb --wandb_name 18-2799_hard --wandb_entity <your_wandb_entity> --specimen_id 18-2799 --preprocess --train_mode
-python3 -m src.train_patient_held_out.main --wandb --wandb_name 18-2800_hard --wandb_entity <your_wandb_entity> --specimen_id 18-2800 --preprocess --train_mode
+python3 -m src.train_patient_held_out.main --wandb --wandb_name 17-1882 --wandb_entity <your_wandb_entity> --specimen_id 17-1882 --preprocess --train_mode
+python3 -m src.train_patient_held_out.main --wandb --wandb_name 17-1905 --wandb_entity <your_wandb_entity> --specimen_id 17-1905 --preprocess --train_mode
+python3 -m src.train_patient_held_out.main --wandb --wandb_name 18-0725 --wandb_entity <your_wandb_entity> --specimen_id 18-0725 --preprocess --train_mode
+python3 -m src.train_patient_held_out.main --wandb --wandb_name 18-1109 --wandb_entity <your_wandb_entity> --specimen_id 18-1109 --preprocess --train_mode
+python3 -m src.train_patient_held_out.main --wandb --wandb_name 18-2799 --wandb_entity <your_wandb_entity> --specimen_id 18-2799 --preprocess --train_mode
+python3 -m src.train_patient_held_out.main --wandb --wandb_name 18-2800 --wandb_entity <your_wandb_entity> --specimen_id 18-2800 --preprocess --train_mode
 ```
 
 - Finetuning Landmark Prediction Model using Pose Estimation Error   
 ```
-python3 -m src.train_patient_held_out.main --wandb --wandb_name 17-1882_hard --wandb_entity <your_wandb_entity> --specimen_id 17-1882 --batch_size 1 --n_simulations 40 --lr 1e-6 --finetune_mode
-python3 -m src.train_patient_held_out.main --wandb --wandb_name 17-1905_hard --wandb_entity <your_wandb_entity> --specimen_id 17-1905 --batch_size 1 --n_simulations 40 --lr 1e-6 --finetune_mode
-python3 -m src.train_patient_held_out.main --wandb --wandb_name 18-0725_hard --wandb_entity <your_wandb_entity> --specimen_id 18-0725 --batch_size 1 --n_simulations 40 --lr 1e-6 --finetune_mode
-python3 -m src.train_patient_held_out.main --wandb --wandb_name 18-1109_hard --wandb_entity <your_wandb_entity> --specimen_id 18-1109 --batch_size 1 --n_simulations 40 --lr 1e-6 --finetune_mode
-python3 -m src.train_patient_held_out.main --wandb --wandb_name 18-2799_hard --wandb_entity <your_wandb_entity> --specimen_id 18-2799 --batch_size 1 --n_simulations 40 --lr 1e-6 --finetune_mode
-python3 -m src.train_patient_held_out.main --wandb --wandb_name 18-2800_hard --wandb_entity <your_wandb_entity> --specimen_id 18-2800 --batch_size 1 --n_simulations 40 --lr 1e-6 --finetune_mode
+python3 -m src.train_patient_held_out.main --wandb --wandb_name 17-1882 --wandb_entity <your_wandb_entity> --specimen_id 17-1882 --batch_size 1 --n_simulations 40 --lr 1e-6 --finetune_mode
+python3 -m src.train_patient_held_out.main --wandb --wandb_name 17-1905 --wandb_entity <your_wandb_entity> --specimen_id 17-1905 --batch_size 1 --n_simulations 40 --lr 1e-6 --finetune_mode
+python3 -m src.train_patient_held_out.main --wandb --wandb_name 18-0725 --wandb_entity <your_wandb_entity> --specimen_id 18-0725 --batch_size 1 --n_simulations 40 --lr 1e-6 --finetune_mode
+python3 -m src.train_patient_held_out.main --wandb --wandb_name 18-1109 --wandb_entity <your_wandb_entity> --specimen_id 18-1109 --batch_size 1 --n_simulations 40 --lr 1e-6 --finetune_mode
+python3 -m src.train_patient_held_out.main --wandb --wandb_name 18-2799 --wandb_entity <your_wandb_entity> --specimen_id 18-2799 --batch_size 1 --n_simulations 40 --lr 1e-6 --finetune_mode
+python3 -m src.train_patient_held_out.main --wandb --wandb_name 18-2800 --wandb_entity <your_wandb_entity> --specimen_id 18-2800 --batch_size 1 --n_simulations 40 --lr 1e-6 --finetune_mode
 ```
 
-- Testing 
+- Testing
+Original Model
+```
+python3 -m src.train_patient_held_out.main --wandb_name 17-1882 --wandb_entity <your_wandb_entity> --specimen_id 17-1882 --dropout_rate 0.1 --top_k_landmarks 3 --test_prediction --test_mode 
+python3 -m src.train_patient_held_out.main --wandb_name 17-1905 --wandb_entity <your_wandb_entity> --specimen_id 17-1905 --dropout_rate 0.1 --top_k_landmarks 3 --test_prediction --test_mode 
+python3 -m src.train_patient_held_out.main --wandb_name 18-0725 --wandb_entity <your_wandb_entity> --specimen_id 18-0725 --dropout_rate 0.1 --top_k_landmarks 3 --test_prediction --test_mode 
+python3 -m src.train_patient_held_out.main --wandb_name 18-1109 --wandb_entity <your_wandb_entity> --specimen_id 18-1109 --dropout_rate 0.1 --top_k_landmarks 3 --test_prediction --test_mode 
+python3 -m src.train_patient_held_out.main --wandb_name 18-2799 --wandb_entity <your_wandb_entity> --specimen_id 18-2799 --dropout_rate 0.1 --top_k_landmarks 3 --test_prediction --test_mode 
+python3 -m src.train_patient_held_out.main --wandb_name 18-2800 --wandb_entity <your_wandb_entity> --specimen_id 18-2800 --dropout_rate 0.1 --top_k_landmarks 3 --test_prediction --test_mode 
+```
+
+Finetuned Model
+```
+python3 -m src.train_patient_held_out.main --model_weight_name finetune --wandb_name 17-1882 --wandb_entity <your_wandb_entity> --specimen_id 17-1882 --dropout_rate 0.1 --top_k_landmarks 3 --test_prediction --test_mode
+python3 -m src.train_patient_held_out.main --model_weight_name finetune --wandb_name 17-1905 --wandb_entity <your_wandb_entity> --specimen_id 17-1905 --dropout_rate 0.1 --top_k_landmarks 3 --test_prediction --test_mode
+python3 -m src.train_patient_held_out.main --model_weight_name finetune --wandb_name 18-0725 --wandb_entity <your_wandb_entity> --specimen_id 18-0725 --dropout_rate 0.1 --top_k_landmarks 3 --test_prediction --test_mode
+python3 -m src.train_patient_held_out.main --model_weight_name finetune --wandb_name 18-1109 --wandb_entity <your_wandb_entity> --specimen_id 18-1109 --dropout_rate 0.1 --top_k_landmarks 3 --test_prediction --test_mode
+python3 -m src.train_patient_held_out.main --model_weight_name finetune --wandb_name 18-2799 --wandb_entity <your_wandb_entity> --specimen_id 18-2799 --dropout_rate 0.1 --top_k_landmarks 3 --test_prediction --test_mode
+python3 -m src.train_patient_held_out.main --model_weight_name finetune --wandb_name 18-2800 --wandb_entity <your_wandb_entity> --specimen_id 18-2800 --dropout_rate 0.1 --top_k_landmarks 3 --test_prediction --test_mode
+```
