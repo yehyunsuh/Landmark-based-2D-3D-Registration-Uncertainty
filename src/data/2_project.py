@@ -274,7 +274,7 @@ if __name__ == "__main__":
     parser.add_argument('--sample_size', type=int, default=600, help='Number of samples')
     parser.add_argument('--n_landmarks', type=int, default=14, help='Number of landmarks')
 
-    parser.add_argument('--task_type', type=str, default='easy', choices=['easy', 'medium', 'hard'], help="Task type to process")
+    parser.add_argument('--task_type', type=str, default='hard', choices=['easy', 'medium', 'hard'], help="Task type to process")
     parser.add_argument('--seed_value', type=int, default=42, help="Fix seed for reproducibility")
 
     parser.add_argument('--drr_dir', type=str, default='drr_projections', help='Directory name to save the DRR projections')

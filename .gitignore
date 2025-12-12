@@ -11,15 +11,19 @@ model_weight*
 log
 wandb
 *.out
+*.csv
+*.txt
+*.png
+intensity_results/
 
 # Results
-visualizations
+visualizations*
 results
 
 # Temporary
 *tmp*
 .DS_Store
-# scripts
+scripts
 *.tar.gz
 
 # Cache
