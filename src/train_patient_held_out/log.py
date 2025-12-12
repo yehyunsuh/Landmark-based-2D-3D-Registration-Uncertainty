@@ -3,11 +3,18 @@ import numpy as np
 
 
 def initiate_wandb(args):
-    wandb.init(
-        project=args.wandb_project,
-        entity=args.wandb_entity,
-        name=args.wandb_name,
-    )
+    if args.finetune_mode:
+        wandb.init(
+            project=args.wandb_project,
+            entity=args.wandb_entity,
+            name=f"{args.wandb_name}_finetune",
+        )
+    else:   
+        wandb.init(
+            project=args.wandb_project,
+            entity=args.wandb_entity,
+            name=args.wandb_name,
+        )
 
 
 def log_results(train_loss, val_loss, mean_dist, mean_dice, best_mean_error, best_val_loss):

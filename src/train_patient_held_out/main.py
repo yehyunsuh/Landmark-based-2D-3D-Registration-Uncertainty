@@ -68,8 +68,8 @@ if __name__ == "__main__":
     parser.add_argument("--test_mode", action="store_true", help="Run in test mode")
     parser.add_argument("--n_simulations", type=int, default=100, help="Number of simulations for model dropout")
     parser.add_argument("--dropout_rate", type=float, default=0.1, help="Dropout rate for model uncertainty estimation")
-    parser.add_argument("--top_k_landmarks", type=int, default=5, help="Number of top uncertain landmarks to filter out")
-    parser.add_argument("--finetune_version", type=str, default="v1", choices=["v1", "v2", "v3"], help="Version of finetuning approach")
+    parser.add_argument("--top_k_landmarks", type=int, default=0, help="Number of top uncertain landmarks to filter out")
+    parser.add_argument("--finetune_version", type=str, default="v2", choices=["v1", "v2", "v3"], help="Version of finetuning approach")
 
     # Visibility / filtering mode
     parser.add_argument("--visibility_mode", type=str, default="pred", choices=["pred", "gt", "both"], help="How to determine which landmarks exist: 'pred' = prediction-based, 'gt' = ground truth based, 'both' = intersection")

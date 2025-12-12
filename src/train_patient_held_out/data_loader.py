@@ -14,7 +14,7 @@ from torch.utils.data import Dataset, DataLoader, random_split
 
 
 class SegmentationDataset(Dataset):
-    def __init__(self, data_dir, specimen_id='17-1882', image_resize=512, n_landmarks=14, dilation_iters=65, invisible_landmarks=True, data_type='train', task_type='easy', model_type='patient_held_out'):
+    def __init__(self, data_dir, specimen_id='17-1882', image_resize=512, n_landmarks=14, dilation_iters=65, invisible_landmarks=True, data_type='train', task_type='easy', model_type='patient_held_out', finetune=False):
         self.data_dir = data_dir
         self.specimen_id = specimen_id
         self.image_resize = image_resize
@@ -25,6 +25,7 @@ class SegmentationDataset(Dataset):
         self.data_type = data_type
         self.task_type = task_type
         self.model_type = model_type
+        self.finetune = finetune
 
         specimen_path_list = sorted(glob(f"{self.data_dir}/*"))
         for specimen_path in specimen_path_list:
@@ -76,7 +77,7 @@ class SegmentationDataset(Dataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         # Apply resizing and normalization
-        if self.data_type == 'train' or self.data_type == 'val':
+        if (self.data_type == 'train' or self.data_type == 'val') and not self.finetune:
             transform = A.Compose([
                     A.Resize(self.image_resize, self.image_resize),
                     A.Normalize(
@@ -124,30 +125,50 @@ class SegmentationDataset(Dataset):
                     masks[k, y, x] = 1
                     masks[k] = binary_dilation(masks[k], iterations=self.dilation_iters).astype(np.uint8)
         
-        if self.data_type == 'train' or self.data_type == 'val':
+        if (self.data_type == 'train' or self.data_type == 'val'):
             mask = torch.from_numpy(masks).float()  # Shape: [n_landmarks, H, W]
-            return image_transformed, mask, image_name, landmarks_transformed
-        
-        if self.data_type == 'test':
-            current_image_name = f'{specimen_id}_{image_name}'
+            if not self.finetune:
+                return image_transformed, mask, image_name, landmarks_transformed
+            else:
+                current_image_name = f'{specimen_id}_{image_name}'
+                # pose_param_csv_path = f'{self.data_dir}/{self.specimen_id}/drr_projections_csv_params/{self.specimen_id}_pose_params_{self.task_type}.csv'
+                pose_param_csv_path = f'{self.data_dir}/{specimen_id}/drr_projections_csv_params/{specimen_id}_pose_params_{self.task_type}.csv'
+                pose_params = []
+                with open(pose_param_csv_path, 'r') as f:
+                    reader = csv.reader(f)
+                    header = next(reader)  # Skip header
+                    for row in reader:
+                        params_specimen_id = row[0]
+                        params_image_name = row[1]
+                        
+                        if current_image_name == params_image_name:
+                            params_task_type = row[2]
+                            rotation_params = list(map(float, row[3:6]))  # rx, ry, rz
+                            translation_params = list(map(float, row[6:9]))  # tx, ty, tz
+                            pose_params = rotation_params + translation_params
+                            break
 
-            pose_param_csv_path = f'{self.data_dir}/{self.specimen_id}/drr_projections_csv_params/{self.specimen_id}_pose_params_{self.task_type}.csv'
-            pose_params = []
-            with open(pose_param_csv_path, 'r') as f:
-                reader = csv.reader(f)
-                header = next(reader)  # Skip header
-                for row in reader:
-                    params_specimen_id = row[0]
-                    params_image_name = row[1]
-                    
-                    if current_image_name == params_image_name:
-                        params_task_type = row[2]
-                        rotation_params = list(map(float, row[3:6]))  # rx, ry, rz
-                        translation_params = list(map(float, row[6:9]))  # tx, ty, tz
-                        pose_params = rotation_params + translation_params
-                        break
+                return image_transformed, mask, specimen_id, image_name, landmarks_transformed, pose_params
 
-            return image_transformed, self.specimen_id, image_name, landmarks_transformed, pose_params
+    
+        current_image_name = f'{specimen_id}_{image_name}'
+        pose_param_csv_path = f'{self.data_dir}/{self.specimen_id}/drr_projections_csv_params/{self.specimen_id}_pose_params_{self.task_type}.csv'
+        pose_params = []
+        with open(pose_param_csv_path, 'r') as f:
+            reader = csv.reader(f)
+            header = next(reader)  # Skip header
+            for row in reader:
+                params_specimen_id = row[0]
+                params_image_name = row[1]
+                
+                if current_image_name == params_image_name:
+                    params_task_type = row[2]
+                    rotation_params = list(map(float, row[3:6]))  # rx, ry, rz
+                    translation_params = list(map(float, row[6:9]))  # tx, ty, tz
+                    pose_params = rotation_params + translation_params
+                    break
+
+        return image_transformed, self.specimen_id, image_name, landmarks_transformed, pose_params
     
 
 def preprocessing(args):
@@ -257,6 +278,41 @@ def dataloader(args, data_type='train', epoch=0):
 
         return train_loader, val_loader
     
+    elif data_type == "finetune":
+        finetune_val_dataset = SegmentationDataset(
+            data_dir=args.data_dir,
+            specimen_id=args.specimen_id,
+            image_resize=args.image_resize,
+            n_landmarks=args.n_landmarks,
+            dilation_iters=args.dilation_iters,
+            invisible_landmarks=args.invisible_landmarks,
+            data_type="val",
+            task_type=args.task_type,
+            model_type='patient_held_out',
+            finetune=True,
+        )
+
+        finetune_train_dataset = SegmentationDataset(
+            data_dir=args.data_dir,
+            specimen_id=args.specimen_id,
+            image_resize=args.image_resize,
+            n_landmarks=args.n_landmarks,
+            dilation_iters=args.dilation_iters,
+            invisible_landmarks=args.invisible_landmarks,
+            data_type="train",
+            task_type=args.task_type,
+            model_type='patient_held_out',
+            finetune=True,
+        )
+
+        finetune_train_loader = DataLoader(finetune_train_dataset, batch_size=args.batch_size, shuffle=True)
+        finetune_val_loader = DataLoader(finetune_val_dataset, batch_size=1, shuffle=False)
+
+        print(f"Finetune Training size: {len(finetune_train_loader.dataset)}")
+        print(f"Finetune Validation size: {len(finetune_val_loader.dataset)}")
+
+        return finetune_train_loader, finetune_val_loader
+
     elif data_type == "test":
         test_dataset = SegmentationDataset(
             data_dir=args.data_dir,
