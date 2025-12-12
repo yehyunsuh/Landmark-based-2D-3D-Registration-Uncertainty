@@ -10,6 +10,7 @@ from src.train.model import UNet
 
 from src.train_patient_held_out.log import initiate_wandb
 from src.train_patient_held_out.train import train
+from src.train_patient_held_out.finetune import finetune
 from src.train_patient_held_out.test import test
 
 from src.test.model import UNet_with_dropout
@@ -27,9 +28,23 @@ def landmark_prediction_train(args):
 
     if args.train_mode:
         model = train(args, model, device)
+    
+    if args.finetune_mode:
+        weight_path = f"{args.model_weight_dir}/{args.model_type}/{args.wandb_name}_dist.pth"
+        # weight_path = f"{args.model_weight_dir}/{args.model_type}/{args.wandb_name}_loss.pth"
+        state_dict = torch.load(weight_path, map_location=device, weights_only=True)
+        
+        if not args.train_mode:    
+            model.load_state_dict(state_dict)
+        model_dropout.load_state_dict(state_dict)
+        
+        model = finetune(args, model, model_dropout, device)
+    
     if args.test_mode:
         weight_path = f"{args.model_weight_dir}/{args.model_type}/{args.wandb_name}_dist.pth"
         # weight_path = f"{args.model_weight_dir}/{args.model_type}/{args.wandb_name}_loss.pth"
+        if args.model_weight_name != "":
+            weight_path = f"{args.model_weight_dir}/{args.model_type}/{args.wandb_name}_dist_{args.model_weight_name}.pth"
         state_dict = torch.load(weight_path, map_location=device, weights_only=True)
         
         if not args.train_mode:    
@@ -49,20 +64,22 @@ if __name__ == "__main__":
     parser.add_argument("--specimen_id", type=str, default="17-1882", help="Specimen ID for patient-held-out training")
     parser.add_argument("--model_type", type=str, default="patient_held_out", help="Type of model")
     parser.add_argument("--train_mode", action="store_true", help="Run in training mode")
+    parser.add_argument("--finetune_mode", action="store_true", help="Run in finetuning mode")
     parser.add_argument("--test_mode", action="store_true", help="Run in test mode")
     parser.add_argument("--n_simulations", type=int, default=100, help="Number of simulations for model dropout")
-    parser.add_argument("--dropout_rate", type=float, default=0.01, help="Dropout rate for model uncertainty estimation")
+    parser.add_argument("--dropout_rate", type=float, default=0.1, help="Dropout rate for model uncertainty estimation")
     parser.add_argument("--top_k_landmarks", type=int, default=5, help="Number of top uncertain landmarks to filter out")
+    parser.add_argument("--finetune_version", type=str, default="v1", choices=["v1", "v2", "v3"], help="Version of finetuning approach")
 
     # Visibility / filtering mode
     parser.add_argument("--visibility_mode", type=str, default="pred", choices=["pred", "gt", "both"], help="How to determine which landmarks exist: 'pred' = prediction-based, 'gt' = ground truth based, 'both' = intersection")
-    parser.add_argument("--pred_visibility_thresh", type=float, default=0.5, help="Probability threshold on the max predicted heatmap value for a landmark to be considered visible")
+    parser.add_argument("--pred_visibility_thresh", type=float, default=0.0, help="Probability threshold on the max predicted heatmap value for a landmark to be considered visible")
 
     # Data paths
     parser.add_argument("--data_dir", type=str, default="data/DeepFluoro", help="Directory containing training images")
     parser.add_argument("--csv_file", type=str, default="train_label.csv", help="CSV file containing training annotations")
     parser.add_argument("--model_weight_dir", type=str, default="model_weight", help="Directory to save model weights")
-    parser.add_argument('--task_type', type=str, default='easy', choices=['easy', 'medium', 'hard'], help="Task type to process")
+    parser.add_argument('--task_type', type=str, default='hard', choices=['easy', 'medium', 'hard'], help="Task type to process")
 
     # Image/label settings
     parser.add_argument("--image_resize", type=int, default=512, help="Target image size after resizing (must be divisible by 32)")
@@ -72,6 +89,8 @@ if __name__ == "__main__":
     # Model parameters
     parser.add_argument("--encoder_depth", type=int, default=5, help="Depth of the encoder in the U-Net model")
     parser.add_argument("--decoder_channels", type=arg_as_list, default="[256, 128, 64, 32, 16]", help="List of channels in the decoder of the U-Net model")
+    parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate for the optimizer")
+    parser.add_argument("--model_weight_name", type=str, default="", help="Pretrained model weight name (if any)")
 
     # Training parameters
     parser.add_argument("--preprocess", action="store_true", help="Run preprocessing before training")
